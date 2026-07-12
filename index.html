@@ -226,9 +226,32 @@
     font-size:12px;
     color:var(--muted);
   }
+  .filter-tabs{
+    display:flex;
+    gap:8px;
+    margin-bottom:18px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:12px;
+    flex-wrap:wrap;
+  }
+  .filter-tabs .tab{
+    padding:8px 16px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    background:#fff;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:600;
+    color:var(--muted);
+  }
+  .filter-tabs .tab.active{
+    background:var(--brand);
+    border-color:var(--brand);
+    color:#fff;
+  }
   @media print{
     body{background:#fff;}
-    .admin-header, .no-print{display:none !important;}
+    .admin-header, .filter-tabs, .no-print{display:none !important;}
     .admin-wrap{padding:0; max-width:100%;}
     .sheet{
       page-break-after:always;
@@ -319,6 +342,11 @@
       <button class="btn danger" id="clearBtn">Clear All</button>
       <button class="btn" id="logoutBtn">Log Out</button>
     </div>
+  </div>
+  <div class="filter-tabs no-print" id="filterTabs">
+    <button class="tab active" data-filter="all">الكل / All</button>
+    <button class="tab" data-filter="Cairo/Giza">القاهرة / الجيزة</button>
+    <button class="tab" data-filter="Other Government">محافظة أخرى</button>
   </div>
   <div id="ordersContainer"></div>
   <div id="emptyState" class="empty-state hidden">
@@ -453,6 +481,18 @@ if(isAdmin){
 
   document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
 
+  let allOrders = [];
+  let currentFilter = 'all';
+
+  document.querySelectorAll('#filterTabs .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('#filterTabs .tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.getAttribute('data-filter');
+      renderOrders();
+    });
+  });
+
   async function loadOrders(){
     const container = document.getElementById('ordersContainer');
     const emptyState = document.getElementById('emptyState');
@@ -468,12 +508,23 @@ if(isAdmin){
       return;
     }
 
-    const orders = [];
+    allOrders = [];
     snapshot.forEach(d => {
       const data = d.data();
       data._id = d.id;
-      orders.push(data);
+      allOrders.push(data);
     });
+
+    renderOrders();
+  }
+
+  function renderOrders(){
+    const container = document.getElementById('ordersContainer');
+    const emptyState = document.getElementById('emptyState');
+
+    const orders = currentFilter === 'all'
+      ? allOrders
+      : allOrders.filter(o => o.government === currentFilter);
 
     if(orders.length === 0){
       container.innerHTML = '';
@@ -530,11 +581,13 @@ if(isAdmin){
   document.getElementById('refreshBtn').addEventListener('click', loadOrders);
   document.getElementById('printBtn').addEventListener('click', () => window.print());
   document.getElementById('clearBtn').addEventListener('click', async () => {
-    if(!confirm('Delete ALL orders? This cannot be undone.')) return;
+    const scopeLabel = currentFilter === 'all' ? 'ALL orders' : `all "${currentFilter}" orders`;
+    if(!confirm(`Delete ${scopeLabel}? This cannot be undone.`)) return;
     try{
-      const snapshot = await getDocs(ordersCol);
-      const deletions = [];
-      snapshot.forEach(d => deletions.push(deleteDoc(doc(db, 'orders', d.id))));
+      const toDelete = currentFilter === 'all'
+        ? allOrders
+        : allOrders.filter(o => o.government === currentFilter);
+      const deletions = toDelete.map(o => deleteDoc(doc(db, 'orders', o._id)));
       await Promise.all(deletions);
       loadOrders();
     }catch(e){ console.error(e); }
