@@ -176,7 +176,7 @@
     padding:14px 16px;
     background:#fff;
     position:relative;
-    min-height:150px;
+    min-height:168px;
   }
   .order-card .num{
     position:absolute;
@@ -518,6 +518,15 @@ if(isAdmin){
     renderOrders();
   }
 
+  function formatDate(ms){
+    if(!ms) return '—';
+    const d = new Date(ms);
+    return d.toLocaleString('en-GB', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
   function renderOrders(){
     const container = document.getElementById('ordersContainer');
     const emptyState = document.getElementById('emptyState');
@@ -552,6 +561,7 @@ if(isAdmin){
           <div class="row"><b>Instagram:</b> ${escapeHtml(o.instagram)}</div>
           <div class="row"><b>Address:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>Phone:</b> ${escapeHtml(o.phone)}</div>
+          <div class="row"><b>Date:</b> ${formatDate(o.createdAt)}</div>
           <span class="gov-badge">${govLabel}</span>
         `;
         sheet.appendChild(card);
