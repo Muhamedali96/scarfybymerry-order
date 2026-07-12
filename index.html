@@ -308,16 +308,31 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// Your Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyC48AgC5GXWZY17eH1uLHWAa-YoArRn0k0",
+  authDomain: "scarfybymerry-orders.firebaseapp.com",
+  projectId: "scarfybymerry-orders",
+  storageBucket: "scarfybymerry-orders.firebasestorage.app",
+  messagingSenderId: "134602927973",
+  appId: "1:134602927973:web:61c17d2bb8d48121c3bb8c"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const ordersCol = collection(db, "orders");
+
 const params = new URLSearchParams(window.location.search);
 const isAdmin = params.get('admin') === '1';
 
 document.getElementById('formView').classList.toggle('hidden', isAdmin);
 document.getElementById('adminView').classList.toggle('hidden', !isAdmin);
-
-function genId(){
-  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
-}
 
 /* ---------------- FORM LOGIC ---------------- */
 if(!isAdmin){
@@ -362,15 +377,12 @@ if(!isAdmin){
     const order = {
       name, address, phone,
       government: selectedGov,
-      timestamp: Date.now()
+      timestamp: serverTimestamp(),
+      createdAt: Date.now()
     };
 
     try{
-      const id = 'orders:' + genId();
-      const result = await window.storage.set(id, JSON.stringify(order), true);
-      if(!result){
-        throw new Error('storage failed');
-      }
+      await addDoc(ordersCol, order);
       document.getElementById('formView').classList.add('hidden');
       document.getElementById('successView').classList.remove('hidden');
     }catch(e){
@@ -389,37 +401,30 @@ if(isAdmin){
     const emptyState = document.getElementById('emptyState');
     container.innerHTML = '<p class="no-print" style="text-align:center;color:#6b7280;">Loading...</p>';
 
-    let keysResult;
+    let snapshot;
     try{
-      keysResult = await window.storage.list('orders:', true);
+      const q = query(ordersCol, orderBy('createdAt', 'asc'));
+      snapshot = await getDocs(q);
     }catch(e){
-      container.innerHTML = '';
-      emptyState.classList.remove('hidden');
+      container.innerHTML = '<p class="no-print" style="text-align:center;color:#c62828;">Failed to load orders. Check your internet connection.</p>';
+      console.error(e);
       return;
     }
 
-    const keys = (keysResult && keysResult.keys) ? keysResult.keys : [];
-    if(keys.length === 0){
+    const orders = [];
+    snapshot.forEach(d => {
+      const data = d.data();
+      data._id = d.id;
+      orders.push(data);
+    });
+
+    if(orders.length === 0){
       container.innerHTML = '';
       emptyState.classList.remove('hidden');
       document.getElementById('countPill').textContent = '0 orders';
       return;
     }
     emptyState.classList.add('hidden');
-
-    const orders = [];
-    for(const k of keys){
-      try{
-        const r = await window.storage.get(k, true);
-        if(r && r.value){
-          const parsed = JSON.parse(r.value);
-          parsed._key = k;
-          orders.push(parsed);
-        }
-      }catch(e){ /* skip broken entries */ }
-    }
-
-    orders.sort((a,b) => (a.timestamp||0) - (b.timestamp||0));
     document.getElementById('countPill').textContent = orders.length + ' orders';
 
     container.innerHTML = '';
@@ -434,7 +439,7 @@ if(isAdmin){
         card.className = 'order-card';
         card.innerHTML = `
           <span class="num">#${i+idx+1}</span>
-          <button class="del no-print" title="Delete" data-key="${o._key}">✕</button>
+          <button class="del no-print" title="Delete" data-id="${o._id}">✕</button>
           <div class="name">${escapeHtml(o.name)}</div>
           <div class="row"><b>Address:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>Phone:</b> ${escapeHtml(o.phone)}</div>
@@ -447,10 +452,10 @@ if(isAdmin){
 
     container.querySelectorAll('.del').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const key = e.target.getAttribute('data-key');
+        const id = e.target.getAttribute('data-id');
         if(confirm('Delete this order?')){
           try{
-            await window.storage.delete(key, true);
+            await deleteDoc(doc(db, 'orders', id));
             loadOrders();
           }catch(err){ console.error(err); }
         }
@@ -469,11 +474,10 @@ if(isAdmin){
   document.getElementById('clearBtn').addEventListener('click', async () => {
     if(!confirm('Delete ALL orders? This cannot be undone.')) return;
     try{
-      const keysResult = await window.storage.list('orders:', true);
-      const keys = (keysResult && keysResult.keys) ? keysResult.keys : [];
-      for(const k of keys){
-        await window.storage.delete(k, true);
-      }
+      const snapshot = await getDocs(ordersCol);
+      const deletions = [];
+      snapshot.forEach(d => deletions.push(deleteDoc(doc(db, 'orders', d.id))));
+      await Promise.all(deletions);
       loadOrders();
     }catch(e){ console.error(e); }
   });
