@@ -262,6 +262,10 @@
     <input type="tel" id="f_phone" placeholder="01xxxxxxxxx">
     <div class="error" id="err_phone">من فضلك أدخل رقم هاتف صحيح / Please enter a valid phone number</div>
 
+    <label>يوزر الانستجرام <span class="en">/ Instagram Username</span></label>
+    <input type="text" id="f_instagram" placeholder="@username">
+    <div class="error" id="err_instagram">من فضلك أدخل يوزر الانستجرام / Please enter your Instagram username</div>
+
     <label>المحافظة <span class="en">/ Government</span></label>
     <div class="gov-options">
       <label class="gov-opt" id="gov_cg">
@@ -277,8 +281,6 @@
 
     <button class="submit" id="submitBtn">إرسال الطلب / Submit Order</button>
   </div>
-
-  <div class="admin-link"><a href="?admin=1" style="color:inherit;">Admin view →</a></div>
 </div>
 
 <div id="successView" class="wrap hidden">
@@ -286,6 +288,21 @@
     <div class="check">✓</div>
     <h2>تم إرسال طلبك بنجاح</h2>
     <p>Your order has been submitted successfully. Thank you!</p>
+  </div>
+</div>
+
+<!-- ================= ADMIN LOGIN ================= -->
+<div id="loginView" class="wrap hidden">
+  <div class="brand-bar">
+    <h1>دخول الأدمن <span>/ Admin Login</span></h1>
+  </div>
+  <div class="card">
+    <label>البريد الإلكتروني <span class="en">/ Email</span></label>
+    <input type="text" id="login_email" placeholder="admin@example.com">
+    <label>كلمة المرور <span class="en">/ Password</span></label>
+    <input type="password" id="login_password" placeholder="••••••••">
+    <div class="error" id="login_error">بيانات الدخول غير صحيحة / Invalid email or password</div>
+    <button class="submit" id="loginBtn">دخول / Log In</button>
   </div>
 </div>
 
@@ -300,6 +317,7 @@
       <button class="btn" id="refreshBtn">↻ Refresh</button>
       <button class="btn primary" id="printBtn">🖨 Print</button>
       <button class="btn danger" id="clearBtn">Clear All</button>
+      <button class="btn" id="logoutBtn">Log Out</button>
     </div>
   </div>
   <div id="ordersContainer"></div>
@@ -313,6 +331,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Your Firebase config
 const firebaseConfig = {
@@ -326,13 +347,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 const ordersCol = collection(db, "orders");
 
 const params = new URLSearchParams(window.location.search);
 const isAdmin = params.get('admin') === '1';
 
 document.getElementById('formView').classList.toggle('hidden', isAdmin);
-document.getElementById('adminView').classList.toggle('hidden', !isAdmin);
 
 /* ---------------- FORM LOGIC ---------------- */
 if(!isAdmin){
@@ -359,14 +380,16 @@ if(!isAdmin){
     const name = document.getElementById('f_name').value.trim();
     const address = document.getElementById('f_address').value.trim();
     const phone = document.getElementById('f_phone').value.trim();
+    const instagram = document.getElementById('f_instagram').value.trim();
 
     let valid = true;
     document.getElementById('err_name').style.display = name ? 'none' : 'block';
     document.getElementById('err_address').style.display = address ? 'none' : 'block';
     const phoneOk = /^[0-9+\s-]{7,}$/.test(phone);
     document.getElementById('err_phone').style.display = phoneOk ? 'none' : 'block';
+    document.getElementById('err_instagram').style.display = instagram ? 'none' : 'block';
     document.getElementById('err_gov').style.display = selectedGov ? 'none' : 'block';
-    if(!name || !address || !phoneOk || !selectedGov) valid = false;
+    if(!name || !address || !phoneOk || !instagram || !selectedGov) valid = false;
 
     if(!valid) return;
 
@@ -375,7 +398,7 @@ if(!isAdmin){
     btn.textContent = 'جارِ الإرسال... / Sending...';
 
     const order = {
-      name, address, phone,
+      name, address, phone, instagram,
       government: selectedGov,
       timestamp: serverTimestamp(),
       createdAt: Date.now()
@@ -396,6 +419,40 @@ if(!isAdmin){
 
 /* ---------------- ADMIN LOGIC ---------------- */
 if(isAdmin){
+  const loginView = document.getElementById('loginView');
+  const adminView = document.getElementById('adminView');
+
+  onAuthStateChanged(auth, (user) => {
+    if(user){
+      loginView.classList.add('hidden');
+      adminView.classList.remove('hidden');
+      loadOrders();
+    }else{
+      loginView.classList.remove('hidden');
+      adminView.classList.add('hidden');
+    }
+  });
+
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    const email = document.getElementById('login_email').value.trim();
+    const password = document.getElementById('login_password').value;
+    const errEl = document.getElementById('login_error');
+    errEl.style.display = 'none';
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.textContent = 'جارِ الدخول... / Logging in...';
+    try{
+      await signInWithEmailAndPassword(auth, email, password);
+    }catch(e){
+      errEl.style.display = 'block';
+      console.error(e);
+    }
+    btn.disabled = false;
+    btn.textContent = 'دخول / Log In';
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+
   async function loadOrders(){
     const container = document.getElementById('ordersContainer');
     const emptyState = document.getElementById('emptyState');
@@ -441,6 +498,7 @@ if(isAdmin){
           <span class="num">#${i+idx+1}</span>
           <button class="del no-print" title="Delete" data-id="${o._id}">✕</button>
           <div class="name">${escapeHtml(o.name)}</div>
+          <div class="row"><b>Instagram:</b> ${escapeHtml(o.instagram)}</div>
           <div class="row"><b>Address:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>Phone:</b> ${escapeHtml(o.phone)}</div>
           <span class="gov-badge">${govLabel}</span>
