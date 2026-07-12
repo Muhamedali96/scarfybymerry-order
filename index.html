@@ -301,6 +301,7 @@
     <label>يوزر الانستجرام <span class="en">/ Instagram Username</span></label>
     <input type="text" id="f_instagram" placeholder="@username">
     <div class="error" id="err_instagram">من فضلك أدخل يوزر الانستجرام / Please enter your Instagram username</div>
+    <div class="error lang-warn" id="warn_instagram">يرجى كتابة يوزر الانستجرام بالإنجليزية فقط / Please write the Instagram username in English only</div>
 
     <label>العنوان بالتفصيل <span class="en">/ Full Address</span></label>
     <textarea id="f_address" placeholder="الشارع، رقم المبنى، الدور، علامة مميزة..."></textarea>
@@ -416,6 +417,10 @@ if(!isAdmin){
   function filterArabicOnly(value){
     return value.replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF0-9\s.,،\-]/g, '');
   }
+  // Instagram usernames only allow letters, numbers, periods, and underscores
+  function filterEnglishOnly(value){
+    return value.replace(/[^a-zA-Z0-9._@]/g, '');
+  }
   ['f_name', 'f_address', 'f_comment'].forEach(id => {
     const el = document.getElementById(id);
     const warnEl = document.getElementById('warn_' + id.replace('f_', ''));
@@ -434,6 +439,22 @@ if(!isAdmin){
         }
       }
     });
+  });
+
+  const igEl = document.getElementById('f_instagram');
+  const igWarn = document.getElementById('warn_instagram');
+  let igHideTimer = null;
+  igEl.addEventListener('input', () => {
+    const filtered = filterEnglishOnly(igEl.value);
+    if(filtered !== igEl.value){
+      const pos = igEl.selectionStart;
+      const diff = igEl.value.length - filtered.length;
+      igEl.value = filtered;
+      igEl.setSelectionRange(pos - diff, pos - diff);
+      igWarn.style.display = 'block';
+      clearTimeout(igHideTimer);
+      igHideTimer = setTimeout(() => { igWarn.style.display = 'none'; }, 2500);
+    }
   });
 
   let selectedGov = null;
