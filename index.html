@@ -176,7 +176,8 @@
     padding:14px 16px;
     background:#fff;
     position:relative;
-    min-height:168px;
+    min-height:155px;
+    padding-bottom:30px;
   }
   .order-card .num{
     position:absolute;
@@ -221,6 +222,14 @@
     border-radius:20px;
     background:#f1f2f4;
     color:#444;
+  }
+  .order-card .timestamp{
+    position:absolute;
+    bottom:10px;
+    left:12px;
+    font-size:10.5px;
+    color:var(--muted);
+    direction:ltr;
   }
   .count-pill{
     font-size:12px;
@@ -561,8 +570,8 @@ if(isAdmin){
           <div class="row"><b>Instagram:</b> ${escapeHtml(o.instagram)}</div>
           <div class="row"><b>Address:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>Phone:</b> ${escapeHtml(o.phone)}</div>
-          <div class="row"><b>Date:</b> ${formatDate(o.createdAt)}</div>
           <span class="gov-badge">${govLabel}</span>
+          <span class="timestamp">${formatDate(o.createdAt)}</span>
         `;
         sheet.appendChild(card);
       });
