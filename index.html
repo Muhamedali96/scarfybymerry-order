@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نموذج الطلب / Order Form</title>
+<style>
+  :root{
+    --ink:#1f2430;
+    --muted:#6b7280;
+    --line:#e5e7eb;
+    --brand:#c2185b;
+    --brand-dark:#9d1349;
+    --bg:#fafafa;
+    --card:#ffffff;
+    --good:#1a7f3c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', Tahoma, Arial, sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+  }
+  .wrap{
+    max-width:520px;
+    margin:0 auto;
+    padding:28px 18px 60px;
+  }
+  .brand-bar{
+    text-align:center;
+    margin-bottom:22px;
+  }
+  .brand-bar h1{
+    font-size:20px;
+    margin:0 0 4px;
+  }
+  .brand-bar p{
+    color:var(--muted);
+    font-size:13px;
+    margin:0;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  label{
+    display:block;
+    font-weight:600;
+    font-size:14px;
+    margin:16px 0 6px;
+  }
+  label .en{
+    font-weight:400;
+    color:var(--muted);
+    font-size:12px;
+  }
+  label:first-of-type{margin-top:0;}
+  input[type=text], input[type=tel], textarea{
+    width:100%;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    font-size:15px;
+    font-family:inherit;
+    background:#fff;
+  }
+  textarea{resize:vertical; min-height:70px;}
+  input:focus, textarea:focus{
+    outline:none;
+    border-color:var(--brand);
+  }
+  .gov-options{
+    display:flex;
+    gap:10px;
+    margin-top:8px;
+  }
+  .gov-opt{
+    flex:1;
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:12px 8px;
+    text-align:center;
+    cursor:pointer;
+    font-size:13.5px;
+    transition:.15s;
+    user-select:none;
+  }
+  .gov-opt.selected{
+    border-color:var(--brand);
+    background:#fdf1f6;
+    color:var(--brand-dark);
+    font-weight:700;
+  }
+  .gov-opt input{display:none;}
+  button.submit{
+    width:100%;
+    margin-top:22px;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    background:var(--brand);
+    color:#fff;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  button.submit:active{background:var(--brand-dark);}
+  .error{
+    color:#c62828;
+    font-size:12.5px;
+    margin-top:6px;
+    display:none;
+  }
+  .success-screen{
+    text-align:center;
+    padding:60px 20px;
+  }
+  .success-screen .check{
+    font-size:52px;
+    color:var(--good);
+  }
+  .success-screen h2{margin:10px 0 6px;}
+  .success-screen p{color:var(--muted); font-size:14px;}
+  .admin-link{
+    text-align:center;
+    margin-top:18px;
+    font-size:11px;
+    color:var(--muted);
+  }
+
+  /* ---------- ADMIN VIEW ---------- */
+  .admin-wrap{
+    max-width:1000px;
+    margin:0 auto;
+    padding:24px 18px 60px;
+  }
+  .admin-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .admin-header h1{font-size:20px; margin:0;}
+  .admin-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .btn{
+    padding:9px 16px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:#fff;
+    cursor:pointer;
+    font-size:13.5px;
+    font-weight:600;
+  }
+  .btn.primary{background:var(--brand); color:#fff; border-color:var(--brand);}
+  .btn.danger{color:#c62828; border-color:#f0c4c4;}
+  .empty-state{
+    text-align:center;
+    color:var(--muted);
+    padding:60px 20px;
+  }
+  .sheet{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-bottom:18px;
+  }
+  .order-card{
+    border:1.5px dashed #c9ccd1;
+    border-radius:10px;
+    padding:14px 16px;
+    background:#fff;
+    position:relative;
+    min-height:150px;
+  }
+  .order-card .num{
+    position:absolute;
+    top:10px;
+    left:12px;
+    font-size:11px;
+    color:var(--muted);
+    font-weight:700;
+  }
+  .order-card .del{
+    position:absolute;
+    top:8px;
+    right:10px;
+    border:none;
+    background:none;
+    color:#c62828;
+    cursor:pointer;
+    font-size:13px;
+  }
+  .order-card .row{
+    font-size:13.5px;
+    margin:5px 0;
+    padding-right:2px;
+  }
+  .order-card .row b{
+    display:inline-block;
+    min-width:78px;
+    color:var(--muted);
+    font-weight:600;
+    font-size:12px;
+  }
+  .order-card .name{
+    font-size:15.5px;
+    font-weight:700;
+    margin-top:16px;
+  }
+  .gov-badge{
+    display:inline-block;
+    margin-top:6px;
+    font-size:11.5px;
+    padding:2px 8px;
+    border-radius:20px;
+    background:#f1f2f4;
+    color:#444;
+  }
+  .count-pill{
+    font-size:12px;
+    color:var(--muted);
+  }
+  @media print{
+    body{background:#fff;}
+    .admin-header, .no-print{display:none !important;}
+    .admin-wrap{padding:0; max-width:100%;}
+    .sheet{
+      page-break-after:always;
+      grid-template-columns:1fr 1fr;
+      grid-auto-rows:1fr;
+    }
+    .order-card{border:1.5px dashed #999;}
+  }
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<!-- ================= CUSTOMER FORM ================= -->
+<div id="formView" class="wrap">
+  <div class="brand-bar">
+    <h1>بيانات الشحن<span> / Shipping Details</span></h1>
+    <p>من فضلك املأ البيانات التالية بدقة ليصلك طلبك<br>Please fill in your details accurately</p>
+  </div>
+
+  <div class="card" id="formCard">
+    <label>الاسم بالكامل <span class="en">/ Full Name</span></label>
+    <input type="text" id="f_name" placeholder="مثال: أحمد محمد">
+    <div class="error" id="err_name">من فضلك أدخل الاسم / Please enter your name</div>
+
+    <label>العنوان بالتفصيل <span class="en">/ Full Address</span></label>
+    <textarea id="f_address" placeholder="الشارع، رقم المبنى، الدور، علامة مميزة..."></textarea>
+    <div class="error" id="err_address">من فضلك أدخل العنوان / Please enter your address</div>
+
+    <label>رقم الهاتف <span class="en">/ Phone Number</span></label>
+    <input type="tel" id="f_phone" placeholder="01xxxxxxxxx">
+    <div class="error" id="err_phone">من فضلك أدخل رقم هاتف صحيح / Please enter a valid phone number</div>
+
+    <label>المحافظة <span class="en">/ Government</span></label>
+    <div class="gov-options">
+      <label class="gov-opt" id="gov_cg">
+        <input type="radio" name="gov" value="Cairo/Giza">
+        القاهرة / الجيزة<br><span class="en">Cairo / Giza</span>
+      </label>
+      <label class="gov-opt" id="gov_other">
+        <input type="radio" name="gov" value="Other Government">
+        محافظة أخرى<br><span class="en">Other Government</span>
+      </label>
+    </div>
+    <div class="error" id="err_gov">من فضلك اختر المحافظة / Please select a government</div>
+
+    <button class="submit" id="submitBtn">إرسال الطلب / Submit Order</button>
+  </div>
+
+  <div class="admin-link"><a href="?admin=1" style="color:inherit;">Admin view →</a></div>
+</div>
+
+<div id="successView" class="wrap hidden">
+  <div class="success-screen">
+    <div class="check">✓</div>
+    <h2>تم إرسال طلبك بنجاح</h2>
+    <p>Your order has been submitted successfully. Thank you!</p>
+  </div>
+</div>
+
+<!-- ================= ADMIN VIEW ================= -->
+<div id="adminView" class="admin-wrap hidden">
+  <div class="admin-header">
+    <div>
+      <h1>الطلبات / Orders</h1>
+      <div class="count-pill" id="countPill">0 orders</div>
+    </div>
+    <div class="admin-actions no-print">
+      <button class="btn" id="refreshBtn">↻ Refresh</button>
+      <button class="btn primary" id="printBtn">🖨 Print</button>
+      <button class="btn danger" id="clearBtn">Clear All</button>
+    </div>
+  </div>
+  <div id="ordersContainer"></div>
+  <div id="emptyState" class="empty-state hidden">
+    <p>لا توجد طلبات بعد<br>No orders yet</p>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const isAdmin = params.get('admin') === '1';
+
+document.getElementById('formView').classList.toggle('hidden', isAdmin);
+document.getElementById('adminView').classList.toggle('hidden', !isAdmin);
+
+function genId(){
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
+}
+
+/* ---------------- FORM LOGIC ---------------- */
+if(!isAdmin){
+  let selectedGov = null;
+  const govCG = document.getElementById('gov_cg');
+  const govOther = document.getElementById('gov_other');
+
+  govCG.addEventListener('click', () => {
+    selectedGov = 'Cairo/Giza';
+    govCG.classList.add('selected');
+    govOther.classList.remove('selected');
+    govCG.querySelector('input').checked = true;
+    document.getElementById('err_gov').style.display = 'none';
+  });
+  govOther.addEventListener('click', () => {
+    selectedGov = 'Other Government';
+    govOther.classList.add('selected');
+    govCG.classList.remove('selected');
+    govOther.querySelector('input').checked = true;
+    document.getElementById('err_gov').style.display = 'none';
+  });
+
+  document.getElementById('submitBtn').addEventListener('click', async () => {
+    const name = document.getElementById('f_name').value.trim();
+    const address = document.getElementById('f_address').value.trim();
+    const phone = document.getElementById('f_phone').value.trim();
+
+    let valid = true;
+    document.getElementById('err_name').style.display = name ? 'none' : 'block';
+    document.getElementById('err_address').style.display = address ? 'none' : 'block';
+    const phoneOk = /^[0-9+\s-]{7,}$/.test(phone);
+    document.getElementById('err_phone').style.display = phoneOk ? 'none' : 'block';
+    document.getElementById('err_gov').style.display = selectedGov ? 'none' : 'block';
+    if(!name || !address || !phoneOk || !selectedGov) valid = false;
+
+    if(!valid) return;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'جارِ الإرسال... / Sending...';
+
+    const order = {
+      name, address, phone,
+      government: selectedGov,
+      timestamp: Date.now()
+    };
+
+    try{
+      const id = 'orders:' + genId();
+      const result = await window.storage.set(id, JSON.stringify(order), true);
+      if(!result){
+        throw new Error('storage failed');
+      }
+      document.getElementById('formView').classList.add('hidden');
+      document.getElementById('successView').classList.remove('hidden');
+    }catch(e){
+      btn.disabled = false;
+      btn.textContent = 'إرسال الطلب / Submit Order';
+      alert('حدث خطأ، حاول مرة أخرى / Something went wrong, please try again.');
+      console.error(e);
+    }
+  });
+}
+
+/* ---------------- ADMIN LOGIC ---------------- */
+if(isAdmin){
+  async function loadOrders(){
+    const container = document.getElementById('ordersContainer');
+    const emptyState = document.getElementById('emptyState');
+    container.innerHTML = '<p class="no-print" style="text-align:center;color:#6b7280;">Loading...</p>';
+
+    let keysResult;
+    try{
+      keysResult = await window.storage.list('orders:', true);
+    }catch(e){
+      container.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      return;
+    }
+
+    const keys = (keysResult && keysResult.keys) ? keysResult.keys : [];
+    if(keys.length === 0){
+      container.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      document.getElementById('countPill').textContent = '0 orders';
+      return;
+    }
+    emptyState.classList.add('hidden');
+
+    const orders = [];
+    for(const k of keys){
+      try{
+        const r = await window.storage.get(k, true);
+        if(r && r.value){
+          const parsed = JSON.parse(r.value);
+          parsed._key = k;
+          orders.push(parsed);
+        }
+      }catch(e){ /* skip broken entries */ }
+    }
+
+    orders.sort((a,b) => (a.timestamp||0) - (b.timestamp||0));
+    document.getElementById('countPill').textContent = orders.length + ' orders';
+
+    container.innerHTML = '';
+    const perPage = 8;
+    for(let i=0; i<orders.length; i+=perPage){
+      const sheet = document.createElement('div');
+      sheet.className = 'sheet';
+      const chunk = orders.slice(i, i+perPage);
+      chunk.forEach((o, idx) => {
+        const govLabel = o.government === 'Cairo/Giza' ? 'القاهرة / الجيزة' : 'محافظة أخرى';
+        const card = document.createElement('div');
+        card.className = 'order-card';
+        card.innerHTML = `
+          <span class="num">#${i+idx+1}</span>
+          <button class="del no-print" title="Delete" data-key="${o._key}">✕</button>
+          <div class="name">${escapeHtml(o.name)}</div>
+          <div class="row"><b>Address:</b> ${escapeHtml(o.address)}</div>
+          <div class="row"><b>Phone:</b> ${escapeHtml(o.phone)}</div>
+          <span class="gov-badge">${govLabel}</span>
+        `;
+        sheet.appendChild(card);
+      });
+      container.appendChild(sheet);
+    }
+
+    container.querySelectorAll('.del').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const key = e.target.getAttribute('data-key');
+        if(confirm('Delete this order?')){
+          try{
+            await window.storage.delete(key, true);
+            loadOrders();
+          }catch(err){ console.error(err); }
+        }
+      });
+    });
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', loadOrders);
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+  document.getElementById('clearBtn').addEventListener('click', async () => {
+    if(!confirm('Delete ALL orders? This cannot be undone.')) return;
+    try{
+      const keysResult = await window.storage.list('orders:', true);
+      const keys = (keysResult && keysResult.keys) ? keysResult.keys : [];
+      for(const k of keys){
+        await window.storage.delete(k, true);
+      }
+      loadOrders();
+    }catch(e){ console.error(e); }
+  });
+
+  loadOrders();
+}
+</script>
+
+</body>
+</html>
