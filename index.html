@@ -408,6 +408,24 @@ document.getElementById('formView').classList.toggle('hidden', isAdmin);
 
 /* ---------------- FORM LOGIC ---------------- */
 if(!isAdmin){
+  // Restrict Name, Address, and Comment fields to Arabic characters only
+  // (Instagram username and Phone number are left unrestricted since they need Latin letters/digits)
+  function filterArabicOnly(value){
+    return value.replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF0-9\s.,،\-]/g, '');
+  }
+  ['f_name', 'f_address', 'f_comment'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      const filtered = filterArabicOnly(el.value);
+      if(filtered !== el.value){
+        const pos = el.selectionStart;
+        const diff = el.value.length - filtered.length;
+        el.value = filtered;
+        el.setSelectionRange(pos - diff, pos - diff);
+      }
+    });
+  });
+
   let selectedGov = null;
   const govCG = document.getElementById('gov_cg');
   const govOther = document.getElementById('gov_other');
