@@ -184,13 +184,30 @@
     min-height:155px;
     padding-bottom:30px;
   }
+  .order-card.is-starred{
+    border:1.5px solid #f5b301;
+    background:#fffdf5;
+  }
   .order-card .num{
     position:absolute;
     top:10px;
     left:12px;
-    font-size:11px;
+    font-size:10.5px;
     color:var(--muted);
     font-weight:700;
+  }
+  .star-btn{
+    border:none;
+    background:none;
+    cursor:pointer;
+    font-size:16px;
+    line-height:1;
+    padding:0 3px 0 0;
+    color:#ccc;
+    vertical-align:middle;
+  }
+  .star-btn.starred{
+    color:#f5b301;
   }
   .order-card .del{
     position:absolute;
@@ -201,6 +218,10 @@
     color:#c62828;
     cursor:pointer;
     font-size:13px;
+  }
+  .order-card .restore-btn{
+    color:var(--good);
+    font-size:15px;
   }
   .order-card .row{
     font-size:13.5px;
@@ -268,9 +289,33 @@
     border-color:var(--brand);
     color:#fff;
   }
+  .filter-tabs .tab.history-tab{
+    margin-right:auto;
+    color:#555;
+  }
+  .filter-tabs .tab.history-tab.active{
+    background:#444;
+    border-color:#444;
+  }
+  .search-bar{
+    margin-bottom:18px;
+  }
+  .search-bar input{
+    width:100%;
+    max-width:320px;
+    padding:9px 14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-size:13.5px;
+    font-family:inherit;
+  }
+  .search-bar input:focus{
+    outline:none;
+    border-color:var(--brand);
+  }
   @media print{
     body{background:#fff;}
-    .admin-header, .filter-tabs, .no-print{display:none !important;}
+    .admin-header, .filter-tabs, .search-bar, .no-print{display:none !important;}
     .admin-wrap{padding:0; max-width:100%;}
     .sheet{
       page-break-after:always;
@@ -311,6 +356,10 @@
     <label>رقم الهاتف <span class="en">/ Phone Number</span></label>
     <input type="tel" id="f_phone" placeholder="01xxxxxxxxx">
     <div class="error" id="err_phone">من فضلك أدخل رقم هاتف صحيح / Please enter a valid phone number</div>
+
+    <label>رقم هاتف آخر <span class="en">/ Another Phone Number</span> <span class="en">(optional)</span></label>
+    <input type="tel" id="f_phone2" placeholder="01xxxxxxxxx">
+    <div class="error" id="err_phone2">من فضلك أدخل رقم هاتف صحيح / Please enter a valid phone number</div>
 
     <label>المحافظة <span class="en">/ Government</span></label>
     <div class="gov-options">
@@ -366,7 +415,7 @@
     <div class="admin-actions no-print">
       <button class="btn" id="refreshBtn">↻ Refresh</button>
       <button class="btn primary" id="printBtn">🖨 Print</button>
-      <button class="btn danger" id="clearBtn">Clear All</button>
+      <button class="btn danger" id="clearBtn">Clear (Move to History)</button>
       <button class="btn" id="logoutBtn">Log Out</button>
     </div>
   </div>
@@ -374,6 +423,10 @@
     <button class="tab active" data-filter="all">الكل / All</button>
     <button class="tab" data-filter="Cairo/Giza">القاهرة / الجيزة</button>
     <button class="tab" data-filter="Other Government">محافظة أخرى</button>
+    <button class="tab history-tab" data-filter="history">🗂 السجل / History</button>
+  </div>
+  <div class="search-bar no-print">
+    <input type="text" id="searchInput" placeholder="ابحث بالاسم... / Search by name...">
   </div>
   <div id="ordersContainer"></div>
   <div id="emptyState" class="empty-state hidden">
@@ -384,7 +437,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp
+  getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
@@ -480,6 +533,7 @@ if(!isAdmin){
     const name = document.getElementById('f_name').value.trim();
     const address = document.getElementById('f_address').value.trim();
     const phone = document.getElementById('f_phone').value.trim();
+    const phone2 = document.getElementById('f_phone2').value.trim();
     const instagram = document.getElementById('f_instagram').value.trim();
     const comment = document.getElementById('f_comment').value.trim();
 
@@ -488,9 +542,11 @@ if(!isAdmin){
     document.getElementById('err_address').style.display = address ? 'none' : 'block';
     const phoneOk = /^[0-9+\s-]{7,}$/.test(phone);
     document.getElementById('err_phone').style.display = phoneOk ? 'none' : 'block';
+    const phone2Ok = !phone2 || /^[0-9+\s-]{7,}$/.test(phone2);
+    document.getElementById('err_phone2').style.display = phone2Ok ? 'none' : 'block';
     document.getElementById('err_instagram').style.display = instagram ? 'none' : 'block';
     document.getElementById('err_gov').style.display = selectedGov ? 'none' : 'block';
-    if(!name || !address || !phoneOk || !instagram || !selectedGov) valid = false;
+    if(!name || !address || !phoneOk || !phone2Ok || !instagram || !selectedGov) valid = false;
 
     if(!valid) return;
 
@@ -499,8 +555,10 @@ if(!isAdmin){
     btn.textContent = 'جارِ الإرسال... / Sending...';
 
     const order = {
-      name, address, phone, instagram, comment,
+      name, address, phone, phone2, instagram, comment,
       government: selectedGov,
+      archived: false,
+      starred: false,
       timestamp: serverTimestamp(),
       createdAt: Date.now()
     };
@@ -556,12 +614,20 @@ if(isAdmin){
 
   let allOrders = [];
   let currentFilter = 'all';
+  let currentSearch = '';
+
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    currentSearch = e.target.value.trim();
+    renderOrders();
+  });
 
   document.querySelectorAll('#filterTabs .tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('#filterTabs .tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       currentFilter = tab.getAttribute('data-filter');
+      const clearBtn = document.getElementById('clearBtn');
+      clearBtn.textContent = currentFilter === 'history' ? 'Delete Permanently' : 'Clear (Move to History)';
       renderOrders();
     });
   });
@@ -588,6 +654,30 @@ if(isAdmin){
       allOrders.push(data);
     });
 
+    // Sort ascending by creation time to determine invoice order
+    allOrders.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+
+    // Backfill invoice numbers (5-digit, sequential) for any orders missing one
+    let maxInvoice = 0;
+    allOrders.forEach(o => {
+      if(o.invoiceNumber){
+        const n = parseInt(o.invoiceNumber, 10);
+        if(!isNaN(n) && n > maxInvoice) maxInvoice = n;
+      }
+    });
+    const missingInvoice = allOrders.filter(o => !o.invoiceNumber);
+    if(missingInvoice.length > 0){
+      try{
+        const batch = writeBatch(db);
+        missingInvoice.forEach(o => {
+          maxInvoice += 1;
+          o.invoiceNumber = String(maxInvoice).padStart(5, '0');
+          batch.update(doc(db, 'orders', o._id), { invoiceNumber: o.invoiceNumber });
+        });
+        await batch.commit();
+      }catch(e){ console.error('Failed to assign invoice numbers', e); }
+    }
+
     renderOrders();
   }
 
@@ -603,19 +693,41 @@ if(isAdmin){
   function renderOrders(){
     const container = document.getElementById('ordersContainer');
     const emptyState = document.getElementById('emptyState');
+    const isHistory = currentFilter === 'history';
 
-    const orders = currentFilter === 'all'
-      ? allOrders
-      : allOrders.filter(o => o.government === currentFilter);
+    let orders;
+    if(isHistory){
+      orders = allOrders.filter(o => o.archived === true);
+    }else if(currentFilter === 'all'){
+      orders = allOrders.filter(o => o.archived !== true);
+    }else{
+      orders = allOrders.filter(o => o.archived !== true && o.government === currentFilter);
+    }
+
+    if(currentSearch){
+      const q = currentSearch.toLowerCase();
+      orders = orders.filter(o => (o.name || '').toLowerCase().startsWith(q));
+    }
+
+    // Starred orders float to the top; otherwise keep creation order
+    orders = orders.slice().sort((a,b) => {
+      const aStar = a.starred ? 1 : 0;
+      const bStar = b.starred ? 1 : 0;
+      if(aStar !== bStar) return bStar - aStar;
+      return (a.createdAt||0) - (b.createdAt||0);
+    });
 
     if(orders.length === 0){
       container.innerHTML = '';
       emptyState.classList.remove('hidden');
+      emptyState.querySelector('p').innerHTML = isHistory
+        ? 'لا توجد طلبات في السجل<br>No archived orders'
+        : 'لا توجد طلبات بعد<br>No orders yet';
       document.getElementById('countPill').textContent = '0 orders';
       return;
     }
     emptyState.classList.add('hidden');
-    document.getElementById('countPill').textContent = orders.length + ' orders';
+    document.getElementById('countPill').textContent = orders.length + (isHistory ? ' archived orders' : ' orders');
 
     container.innerHTML = '';
     const perPage = 8;
@@ -626,15 +738,23 @@ if(isAdmin){
       chunk.forEach((o, idx) => {
         const govLabel = o.government === 'Cairo/Giza' ? 'القاهرة / الجيزة' : 'محافظة أخرى';
         const card = document.createElement('div');
-        card.className = 'order-card';
+        card.className = 'order-card' + (o.starred ? ' is-starred' : '');
+        const actionButtons = isHistory
+          ? `<button class="del restore-btn no-print" title="Restore" data-id="${o._id}">↩</button>
+             <button class="del no-print" title="Delete Permanently" data-id="${o._id}" style="right:36px;">✕</button>`
+          : `<button class="del no-print" title="Archive" data-id="${o._id}">✕</button>`;
         card.innerHTML = `
-          <span class="num">#${i+idx+1}</span>
-          <button class="del no-print" title="Delete" data-id="${o._id}">✕</button>
-          <div class="name">${escapeHtml(o.name)}</div>
-          <div class="row">${escapeHtml(o.instagram)}</div>
-          <div class="row"><b>العنوان:</b> ${escapeHtml(o.address)}</div>
-          <div class="row"><b>تليفون:</b> ${escapeHtml(o.phone)}</div>
-          ${o.comment ? `<div class="row comment-row"><b>ملاحظة:</b> ${escapeHtml(o.comment)}</div>` : ''}
+          <span class="num">رقم الفاتوره: ${o.invoiceNumber || '-----'}</span>
+          ${actionButtons}
+          <div class="name">
+            <button class="star-btn no-print${o.starred ? ' starred' : ''}" data-id="${o._id}" title="Star">${o.starred ? '★' : '☆'}</button>
+            ${escapeHtml(o.name)}
+          </div>
+          <div class="row"><b>Instagram:</b> ${escapeHtml(o.instagram)}</div>
+          <div class="row"><b>Address:</b> ${escapeHtml(o.address)}</div>
+          <div class="row"><b>Phone:</b> ${escapeHtml(o.phone)}</div>
+          ${o.phone2 ? `<div class="row"><b>Phone 2:</b> ${escapeHtml(o.phone2)}</div>` : ''}
+          ${o.comment ? `<div class="row comment-row"><b>Note:</b> ${escapeHtml(o.comment)}</div>` : ''}
           <span class="gov-badge">${govLabel}</span>
           <span class="timestamp">${formatDate(o.createdAt)}</span>
         `;
@@ -643,17 +763,54 @@ if(isAdmin){
       container.appendChild(sheet);
     }
 
-    container.querySelectorAll('.del').forEach(btn => {
+    container.querySelectorAll('.star-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
-        if(confirm('Delete this order?')){
-          try{
-            await deleteDoc(doc(db, 'orders', id));
-            loadOrders();
-          }catch(err){ console.error(err); }
-        }
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        const orderObj = allOrders.find(o => o._id === id);
+        if(!orderObj) return;
+        orderObj.starred = !orderObj.starred;
+        renderOrders();
+        try{
+          await updateDoc(doc(db, 'orders', id), { starred: orderObj.starred });
+        }catch(err){ console.error(err); }
       });
     });
+
+    if(isHistory){
+      container.querySelectorAll('.restore-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.getAttribute('data-id');
+          try{
+            await updateDoc(doc(db, 'orders', id), { archived: false });
+            loadOrders();
+          }catch(err){ console.error(err); }
+        });
+      });
+      container.querySelectorAll('.del:not(.restore-btn)').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.getAttribute('data-id');
+          if(confirm('Permanently delete this order? This cannot be undone.')){
+            try{
+              await deleteDoc(doc(db, 'orders', id));
+              loadOrders();
+            }catch(err){ console.error(err); }
+          }
+        });
+      });
+    }else{
+      container.querySelectorAll('.del').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.getAttribute('data-id');
+          if(confirm('Move this order to history?')){
+            try{
+              await updateDoc(doc(db, 'orders', id), { archived: true });
+              loadOrders();
+            }catch(err){ console.error(err); }
+          }
+        });
+      });
+    }
   }
 
   function escapeHtml(str){
@@ -665,14 +822,25 @@ if(isAdmin){
   document.getElementById('refreshBtn').addEventListener('click', loadOrders);
   document.getElementById('printBtn').addEventListener('click', () => window.print());
   document.getElementById('clearBtn').addEventListener('click', async () => {
+    const isHistory = currentFilter === 'history';
+
+    if(isHistory){
+      if(!confirm('Permanently delete ALL archived orders? This cannot be undone.')) return;
+      try{
+        const toDelete = allOrders.filter(o => o.archived === true);
+        await Promise.all(toDelete.map(o => deleteDoc(doc(db, 'orders', o._id))));
+        loadOrders();
+      }catch(e){ console.error(e); }
+      return;
+    }
+
     const scopeLabel = currentFilter === 'all' ? 'ALL orders' : `all "${currentFilter}" orders`;
-    if(!confirm(`Delete ${scopeLabel}? This cannot be undone.`)) return;
+    if(!confirm(`Move ${scopeLabel} to History? You can restore them later from the History tab.`)) return;
     try{
-      const toDelete = currentFilter === 'all'
-        ? allOrders
-        : allOrders.filter(o => o.government === currentFilter);
-      const deletions = toDelete.map(o => deleteDoc(doc(db, 'orders', o._id)));
-      await Promise.all(deletions);
+      const toArchive = currentFilter === 'all'
+        ? allOrders.filter(o => o.archived !== true)
+        : allOrders.filter(o => o.archived !== true && o.government === currentFilter);
+      await Promise.all(toArchive.map(o => updateDoc(doc(db, 'orders', o._id), { archived: true })));
       loadOrders();
     }catch(e){ console.error(e); }
   });
