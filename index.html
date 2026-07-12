@@ -296,6 +296,7 @@
     <label>الاسم بالكامل <span class="en">/ Full Name</span></label>
     <input type="text" id="f_name" placeholder="مثال: أحمد محمد">
     <div class="error" id="err_name">من فضلك أدخل الاسم / Please enter your name</div>
+    <div class="error lang-warn" id="warn_name">من فضلك اكتب باللغة العربية فقط / Please write in Arabic only</div>
 
     <label>يوزر الانستجرام <span class="en">/ Instagram Username</span></label>
     <input type="text" id="f_instagram" placeholder="@username">
@@ -304,6 +305,7 @@
     <label>العنوان بالتفصيل <span class="en">/ Full Address</span></label>
     <textarea id="f_address" placeholder="الشارع، رقم المبنى، الدور، علامة مميزة..."></textarea>
     <div class="error" id="err_address">من فضلك أدخل العنوان / Please enter your address</div>
+    <div class="error lang-warn" id="warn_address">من فضلك اكتب باللغة العربية فقط / Please write in Arabic only</div>
 
     <label>رقم الهاتف <span class="en">/ Phone Number</span></label>
     <input type="tel" id="f_phone" placeholder="01xxxxxxxxx">
@@ -324,6 +326,7 @@
 
     <label>أي تعليق أو ملاحظة <span class="en">/ Any Comments or Notes</span> <span class="en">(optional)</span></label>
     <textarea id="f_comment" placeholder="اكتب هنا أي تفاصيل إضافية عن طلبك..."></textarea>
+    <div class="error lang-warn" id="warn_comment">من فضلك اكتب باللغة العربية فقط / Please write in Arabic only</div>
 
     <button class="submit" id="submitBtn">إرسال الطلب / Submit Order</button>
   </div>
@@ -415,6 +418,8 @@ if(!isAdmin){
   }
   ['f_name', 'f_address', 'f_comment'].forEach(id => {
     const el = document.getElementById(id);
+    const warnEl = document.getElementById('warn_' + id.replace('f_', ''));
+    let hideTimer = null;
     el.addEventListener('input', () => {
       const filtered = filterArabicOnly(el.value);
       if(filtered !== el.value){
@@ -422,6 +427,11 @@ if(!isAdmin){
         const diff = el.value.length - filtered.length;
         el.value = filtered;
         el.setSelectionRange(pos - diff, pos - diff);
+        if(warnEl){
+          warnEl.style.display = 'block';
+          clearTimeout(hideTimer);
+          hideTimer = setTimeout(() => { warnEl.style.display = 'none'; }, 2500);
+        }
       }
     });
   });
