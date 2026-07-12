@@ -776,7 +776,7 @@ if(isAdmin){
             <button class="star-btn no-print${o.starred ? ' starred' : ''}" data-id="${o._id}" title="Star">${o.starred ? '★' : '☆'}</button>
             ${escapeHtml(o.name)}
           </div>
-          <div class="row"><b></b> ${escapeHtml(o.instagram)}</div>
+		  <div class="name">${escapeHtml(o.instagram)}</div>
           <div class="row"><b>العنوان:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>رقم الهاتف:</b> ${escapeHtml(o.phone)}</div>
           ${o.phone2 ? `<div class="row"><b>رقم هاتف آخر:</b> ${escapeHtml(o.phone2)}</div>` : ''}
