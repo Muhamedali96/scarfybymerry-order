@@ -631,7 +631,7 @@ if(isAdmin){
           <span class="num">#${i+idx+1}</span>
           <button class="del no-print" title="Delete" data-id="${o._id}">✕</button>
           <div class="name">${escapeHtml(o.name)}</div>
-          <div class="row"><b>Instagram:</b> ${escapeHtml(o.instagram)}</div>
+          <div class="row"><b></b> ${escapeHtml(o.instagram)}</div>
           <div class="row"><b>Address:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>Phone:</b> ${escapeHtml(o.phone)}</div>
           ${o.comment ? `<div class="row comment-row"><b>Note:</b> ${escapeHtml(o.comment)}</div>` : ''}
