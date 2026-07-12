@@ -214,6 +214,11 @@
     font-weight:600;
     font-size:12px;
   }
+  .order-card .comment-row{
+    font-size:12.5px;
+    color:#444;
+    line-height:1.4;
+  }
   .order-card .name{
     font-size:15.5px;
     font-weight:700;
@@ -316,6 +321,9 @@
       </label>
     </div>
     <div class="error" id="err_gov">من فضلك اختر المحافظة / Please select a government</div>
+
+    <label>أي تعليق أو ملاحظة <span class="en">/ Any Comments or Notes</span> <span class="en">(optional)</span></label>
+    <textarea id="f_comment" placeholder="اكتب هنا أي تفاصيل إضافية عن طلبك..."></textarea>
 
     <button class="submit" id="submitBtn">إرسال الطلب / Submit Order</button>
   </div>
@@ -424,6 +432,7 @@ if(!isAdmin){
     const address = document.getElementById('f_address').value.trim();
     const phone = document.getElementById('f_phone').value.trim();
     const instagram = document.getElementById('f_instagram').value.trim();
+    const comment = document.getElementById('f_comment').value.trim();
 
     let valid = true;
     document.getElementById('err_name').style.display = name ? 'none' : 'block';
@@ -441,7 +450,7 @@ if(!isAdmin){
     btn.textContent = 'جارِ الإرسال... / Sending...';
 
     const order = {
-      name, address, phone, instagram,
+      name, address, phone, instagram, comment,
       government: selectedGov,
       timestamp: serverTimestamp(),
       createdAt: Date.now()
@@ -576,6 +585,7 @@ if(isAdmin){
           <div class="row"><b>Instagram:</b> ${escapeHtml(o.instagram)}</div>
           <div class="row"><b>Address:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>Phone:</b> ${escapeHtml(o.phone)}</div>
+          ${o.comment ? `<div class="row comment-row"><b>Note:</b> ${escapeHtml(o.comment)}</div>` : ''}
           <span class="gov-badge">${govLabel}</span>
           <span class="timestamp">${formatDate(o.createdAt)}</span>
         `;
