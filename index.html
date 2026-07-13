@@ -839,13 +839,48 @@ if(isAdmin){
     // Sort ascending by creation time to determine invoice order
     allOrders.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
 
-    // Backfill invoice numbers for any legacy orders missing one.
-    // Uses the same persistent atomic counter as new orders, so numbers
-    // keep climbing forward and never get reused, even after deletions.
-    const missingInvoice = allOrders.filter(o => !o.invoiceNumber);
-    if(missingInvoice.length > 0){
+    // 1) Make sure the persistent counter is at least as high as the
+    //    largest invoice number that already exists, so new orders
+    //    never collide with legacy ones.
+    let maxExisting = 0;
+    allOrders.forEach(o => {
+      if(o.invoiceNumber){
+        const n = parseInt(o.invoiceNumber, 10);
+        if(!isNaN(n) && n > maxExisting) maxExisting = n;
+      }
+    });
+    if(maxExisting > 0){
       try{
-        for(const o of missingInvoice){
+        const counterRef = doc(db, 'meta', 'invoiceCounter');
+        await runTransaction(db, async (transaction) => {
+          const snap = await transaction.get(counterRef);
+          const current = snap.exists() ? (snap.data().value || 0) : 0;
+          if(current < maxExisting){
+            transaction.set(counterRef, { value: maxExisting }, { merge: true });
+          }
+        });
+      }catch(e){ console.error('Failed to sync invoice counter', e); }
+    }
+
+    // 2) Find any duplicate invoice numbers (this can happen from the
+    //    earlier bug) and any orders missing a number entirely.
+    //    The EARLIEST order keeps its number; later duplicates and any
+    //    orders with no number get a fresh, guaranteed-unique one.
+    const seen = new Set();
+    const needsNewNumber = [];
+    allOrders.forEach(o => {
+      if(!o.invoiceNumber){
+        needsNewNumber.push(o);
+      }else if(seen.has(o.invoiceNumber)){
+        needsNewNumber.push(o);
+      }else{
+        seen.add(o.invoiceNumber);
+      }
+    });
+
+    if(needsNewNumber.length > 0){
+      try{
+        for(const o of needsNewNumber){
           const num = await getNextInvoiceNumber();
           o.invoiceNumber = num;
           await updateDoc(doc(db, 'orders', o._id), { invoiceNumber: num });
