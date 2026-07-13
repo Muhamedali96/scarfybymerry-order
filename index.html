@@ -181,8 +181,8 @@
     padding:14px 16px;
     background:#fff;
     position:relative;
-    min-height:155px;
-    padding-bottom:30px;
+    min-height:170px;
+    padding-bottom:46px;
   }
   .order-card.is-starred{
     border:1.5px solid #f5b301;
@@ -233,6 +233,16 @@
     color:var(--good);
     font-size:15px;
   }
+  .order-card .edit-btn{
+    position:absolute;
+    top:8px;
+    right:10px;
+    border:none;
+    background:none;
+    color:#555;
+    cursor:pointer;
+    font-size:13px;
+  }
   .order-card .row{
     font-size:13.5px;
     margin:5px 0;
@@ -255,6 +265,12 @@
     font-weight:700;
     margin-top:20px;
   }
+  .order-card .instagram-line{
+    font-size:12.5px;
+    font-weight:400;
+    color:#555;
+    margin-top:0;
+  }
   .gov-badge{
     display:inline-block;
     margin-top:6px;
@@ -271,6 +287,24 @@
     font-size:10.5px;
     color:var(--muted);
     direction:ltr;
+  }
+  .order-card .price-box{
+    position:absolute;
+    bottom:28px;
+    left:12px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    color:var(--muted);
+  }
+  .order-card .price-box .price-rect{
+    display:inline-block;
+    width:46px;
+    height:16px;
+    border:1px solid #999;
+    border-radius:3px;
+    background:#fff;
   }
   .count-pill{
     font-size:12px;
@@ -327,6 +361,51 @@
     outline:none;
     border-color:var(--brand);
   }
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.5);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    padding:20px;
+  }
+  .modal-box{
+    background:#fff;
+    border-radius:14px;
+    padding:24px;
+    max-width:480px;
+    width:100%;
+    max-height:88vh;
+    overflow-y:auto;
+  }
+  .modal-box h2{
+    font-size:18px;
+    margin:0 0 16px;
+  }
+  .modal-box label{
+    display:block;
+    font-weight:600;
+    font-size:13.5px;
+    margin:14px 0 6px;
+  }
+  .modal-box label:first-of-type{margin-top:0;}
+  .modal-box input[type=text], .modal-box input[type=tel], .modal-box textarea{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-size:14px;
+    font-family:inherit;
+  }
+  .modal-box textarea{resize:vertical; min-height:60px;}
+  .modal-actions{
+    display:flex;
+    gap:10px;
+    margin-top:20px;
+  }
+  .modal-actions button{flex:1;}
   @media print{
     body{background:#fff;}
     .admin-header, .filter-tabs, .search-bar, .no-print{display:none !important;}
@@ -442,10 +521,53 @@
   <div class="search-bar no-print">
     <input type="text" id="searchInput" placeholder="ابحث بالاسم... / Search by name...">
     <input type="text" id="searchInstagramInput" placeholder="ابحث باليوزر... / Search by Instagram username...">
+    <input type="text" id="searchPhoneInput" placeholder="ابحث برقم الهاتف... / Search by phone number...">
   </div>
   <div id="ordersContainer"></div>
   <div id="emptyState" class="empty-state hidden">
     <p>لا توجد طلبات بعد<br>No orders yet</p>
+  </div>
+</div>
+
+<!-- ================= EDIT ORDER MODAL ================= -->
+<div id="editModalOverlay" class="modal-overlay hidden no-print">
+  <div class="modal-box">
+    <h2>تعديل الطلب <span class="en">/ Edit Order</span></h2>
+
+    <label>الاسم بالكامل <span class="en">/ Full Name</span></label>
+    <input type="text" id="edit_name">
+
+    <label>يوزر الانستجرام <span class="en">/ Instagram Username</span></label>
+    <input type="text" id="edit_instagram">
+
+    <label>العنوان بالتفصيل <span class="en">/ Full Address</span></label>
+    <textarea id="edit_address"></textarea>
+
+    <label>رقم الهاتف <span class="en">/ Phone Number</span></label>
+    <input type="tel" id="edit_phone">
+
+    <label>رقم هاتف آخر <span class="en">/ Another Phone Number</span></label>
+    <input type="tel" id="edit_phone2">
+
+    <label>المحافظة <span class="en">/ Government</span></label>
+    <div class="gov-options">
+      <label class="gov-opt" id="edit_gov_cg">
+        <input type="radio" name="edit_gov" value="Cairo/Giza">
+        القاهرة / الجيزة<br><span class="en">Cairo / Giza</span>
+      </label>
+      <label class="gov-opt" id="edit_gov_other">
+        <input type="radio" name="edit_gov" value="Other Government">
+        محافظة أخرى<br><span class="en">Other Government</span>
+      </label>
+    </div>
+
+    <label>أي تعليق أو ملاحظة <span class="en">/ Any Comments or Notes</span></label>
+    <textarea id="edit_comment"></textarea>
+
+    <div class="modal-actions">
+      <button class="btn" id="editCancelBtn">إلغاء / Cancel</button>
+      <button class="btn primary" id="editSaveBtn">حفظ / Save</button>
+    </div>
   </div>
 </div>
 
@@ -493,17 +615,18 @@ const isAdmin = params.get('admin') === '1';
 
 document.getElementById('formView').classList.toggle('hidden', isAdmin);
 
+// Restrict Name, Address, and Comment fields to Arabic characters only
+// (Instagram username and Phone number are left unrestricted since they need Latin letters/digits)
+function filterArabicOnly(value){
+  return value.replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF0-9\s.,،\-]/g, '');
+}
+// Instagram usernames only allow letters, numbers, periods, and underscores
+function filterEnglishOnly(value){
+  return value.replace(/[^a-zA-Z0-9._@]/g, '');
+}
+
 /* ---------------- FORM LOGIC ---------------- */
 if(!isAdmin){
-  // Restrict Name, Address, and Comment fields to Arabic characters only
-  // (Instagram username and Phone number are left unrestricted since they need Latin letters/digits)
-  function filterArabicOnly(value){
-    return value.replace(/[^\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF0-9\s.,،\-]/g, '');
-  }
-  // Instagram usernames only allow letters, numbers, periods, and underscores
-  function filterEnglishOnly(value){
-    return value.replace(/[^a-zA-Z0-9._@]/g, '');
-  }
   ['f_name', 'f_address', 'f_comment'].forEach(id => {
     const el = document.getElementById(id);
     const warnEl = document.getElementById('warn_' + id.replace('f_', ''));
@@ -647,6 +770,7 @@ if(isAdmin){
   let currentFilter = 'all';
   let currentSearch = '';
   let currentSearchInstagram = '';
+  let currentSearchPhone = '';
 
   document.getElementById('searchInput').addEventListener('input', (e) => {
     currentSearch = e.target.value.trim();
@@ -655,6 +779,11 @@ if(isAdmin){
 
   document.getElementById('searchInstagramInput').addEventListener('input', (e) => {
     currentSearchInstagram = e.target.value.trim();
+    renderOrders();
+  });
+
+  document.getElementById('searchPhoneInput').addEventListener('input', (e) => {
+    currentSearchPhone = e.target.value.trim();
     renderOrders();
   });
 
@@ -742,6 +871,14 @@ if(isAdmin){
       const qi = currentSearchInstagram.toLowerCase().replace(/^@/, '');
       orders = orders.filter(o => (o.instagram || '').toLowerCase().replace(/^@/, '').startsWith(qi));
     }
+    if(currentSearchPhone){
+      const qp = currentSearchPhone.replace(/[\s-]/g, '');
+      orders = orders.filter(o => {
+        const p1 = (o.phone || '').replace(/[\s-]/g, '');
+        const p2 = (o.phone2 || '').replace(/[\s-]/g, '');
+        return p1.startsWith(qp) || p2.startsWith(qp);
+      });
+    }
 
     // Starred orders float to the top; otherwise keep creation order
     orders = orders.slice().sort((a,b) => {
@@ -776,7 +913,8 @@ if(isAdmin){
         const actionButtons = isHistory
           ? `<button class="del restore-btn no-print" title="Restore" data-id="${o._id}">↩</button>
              <button class="del no-print" title="Delete Permanently" data-id="${o._id}" style="right:36px;">✕</button>`
-          : `<button class="del no-print" title="Archive" data-id="${o._id}">✕</button>`;
+          : `<button class="del no-print" title="Archive" data-id="${o._id}">✕</button>
+             <button class="edit-btn no-print" title="Edit" data-id="${o._id}" style="right:34px;">✎</button>`;
         card.innerHTML = `
           <span class="num">رقم الفاتوره: ${o.invoiceNumber || '-----'}</span>
           <span class="card-brand">سكارفي</span>
@@ -785,12 +923,13 @@ if(isAdmin){
             <button class="star-btn no-print${o.starred ? ' starred' : ''}" data-id="${o._id}" title="Star">${o.starred ? '★' : '☆'}</button>
             ${escapeHtml(o.name)}
           </div>
-		  <div class="name">${escapeHtml(o.instagram)}</div>
+		  <div class="instagram-line">${escapeHtml(o.instagram)}</div>
           <div class="row"><b>العنوان:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>رقم الهاتف:</b> ${escapeHtml(o.phone)}</div>
           ${o.phone2 ? `<div class="row"><b>رقم هاتف آخر:</b> ${escapeHtml(o.phone2)}</div>` : ''}
           ${o.comment ? `<div class="row comment-row"><b>ملاحظة:</b> ${escapeHtml(o.comment)}</div>` : ''}
           <span class="gov-badge">${govLabel}</span>
+          <span class="price-box"><span>السعر</span><span class="price-rect"></span></span>
           <span class="timestamp">${formatDate(o.createdAt)}</span>
         `;
         sheet.appendChild(card);
@@ -809,6 +948,14 @@ if(isAdmin){
         try{
           await updateDoc(doc(db, 'orders', id), { starred: orderObj.starred });
         }catch(err){ console.error(err); }
+      });
+    });
+
+    container.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.getAttribute('data-id');
+        const orderObj = allOrders.find(o => o._id === id);
+        if(orderObj) openEditModal(orderObj);
       });
     });
 
@@ -853,6 +1000,108 @@ if(isAdmin){
     div.textContent = str || '';
     return div.innerHTML;
   }
+
+  /* ---------------- EDIT MODAL ---------------- */
+  let editingOrderId = null;
+  let editSelectedGov = null;
+  const editOverlay = document.getElementById('editModalOverlay');
+  const editGovCG = document.getElementById('edit_gov_cg');
+  const editGovOther = document.getElementById('edit_gov_other');
+
+  editGovCG.addEventListener('click', () => {
+    editSelectedGov = 'Cairo/Giza';
+    editGovCG.classList.add('selected');
+    editGovOther.classList.remove('selected');
+    editGovCG.querySelector('input').checked = true;
+  });
+  editGovOther.addEventListener('click', () => {
+    editSelectedGov = 'Other Government';
+    editGovOther.classList.add('selected');
+    editGovCG.classList.remove('selected');
+    editGovOther.querySelector('input').checked = true;
+  });
+
+  // Apply the same Arabic-only / English-only typing restrictions as the customer form
+  ['edit_name', 'edit_address', 'edit_comment'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      const filtered = filterArabicOnly(el.value);
+      if(filtered !== el.value){
+        const pos = el.selectionStart;
+        const diff = el.value.length - filtered.length;
+        el.value = filtered;
+        el.setSelectionRange(pos - diff, pos - diff);
+      }
+    });
+  });
+  const editIgEl = document.getElementById('edit_instagram');
+  editIgEl.addEventListener('input', () => {
+    const filtered = filterEnglishOnly(editIgEl.value);
+    if(filtered !== editIgEl.value){
+      const pos = editIgEl.selectionStart;
+      const diff = editIgEl.value.length - filtered.length;
+      editIgEl.value = filtered;
+      editIgEl.setSelectionRange(pos - diff, pos - diff);
+    }
+  });
+
+  function openEditModal(o){
+    editingOrderId = o._id;
+    document.getElementById('edit_name').value = o.name || '';
+    document.getElementById('edit_instagram').value = o.instagram || '';
+    document.getElementById('edit_address').value = o.address || '';
+    document.getElementById('edit_phone').value = o.phone || '';
+    document.getElementById('edit_phone2').value = o.phone2 || '';
+    document.getElementById('edit_comment').value = o.comment || '';
+
+    editSelectedGov = o.government || null;
+    editGovCG.classList.toggle('selected', editSelectedGov === 'Cairo/Giza');
+    editGovOther.classList.toggle('selected', editSelectedGov === 'Other Government');
+    editGovCG.querySelector('input').checked = editSelectedGov === 'Cairo/Giza';
+    editGovOther.querySelector('input').checked = editSelectedGov === 'Other Government';
+
+    editOverlay.classList.remove('hidden');
+  }
+
+  function closeEditModal(){
+    editOverlay.classList.add('hidden');
+    editingOrderId = null;
+  }
+
+  document.getElementById('editCancelBtn').addEventListener('click', closeEditModal);
+  editOverlay.addEventListener('click', (e) => {
+    if(e.target === editOverlay) closeEditModal();
+  });
+
+  document.getElementById('editSaveBtn').addEventListener('click', async () => {
+    if(!editingOrderId) return;
+    const saveBtn = document.getElementById('editSaveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'جارِ الحفظ... / Saving...';
+
+    const updatedData = {
+      name: document.getElementById('edit_name').value.trim(),
+      instagram: document.getElementById('edit_instagram').value.trim(),
+      address: document.getElementById('edit_address').value.trim(),
+      phone: document.getElementById('edit_phone').value.trim(),
+      phone2: document.getElementById('edit_phone2').value.trim(),
+      comment: document.getElementById('edit_comment').value.trim(),
+      government: editSelectedGov
+    };
+
+    try{
+      await updateDoc(doc(db, 'orders', editingOrderId), updatedData);
+      const orderObj = allOrders.find(o => o._id === editingOrderId);
+      if(orderObj) Object.assign(orderObj, updatedData);
+      closeEditModal();
+      renderOrders();
+    }catch(e){
+      console.error(e);
+      alert('حدث خطأ أثناء الحفظ / Something went wrong while saving.');
+    }
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'حفظ / Save';
+  });
 
   document.getElementById('refreshBtn').addEventListener('click', loadOrders);
   document.getElementById('printBtn').addEventListener('click', () => window.print());
