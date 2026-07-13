@@ -181,8 +181,8 @@
     padding:14px 16px;
     background:#fff;
     position:relative;
-    min-height:170px;
-    padding-bottom:46px;
+    min-height:150px;
+    padding-bottom:14px;
   }
   .order-card.is-starred{
     border:1.5px solid #f5b301;
@@ -281,30 +281,36 @@
     color:#444;
   }
   .order-card .timestamp{
-    position:absolute;
-    bottom:10px;
-    left:12px;
+    display:block;
+    margin-top:10px;
     font-size:10.5px;
     color:var(--muted);
     direction:ltr;
   }
-  .order-card .price-box{
-    position:absolute;
-    bottom:28px;
-    left:12px;
+  .order-card .price-equation{
     display:flex;
     align-items:center;
-    gap:6px;
-    font-size:11px;
-    color:var(--muted);
+    gap:7px;
+    flex-wrap:wrap;
+    margin-top:16px;
+    padding-top:12px;
+    border-top:1px dashed #d8dade;
+    font-size:14.5px;
+    font-weight:700;
+    color:#333;
   }
-  .order-card .price-box .price-rect{
+  .order-card .price-equation .price-rect{
     display:inline-block;
-    width:46px;
-    height:16px;
-    border:1px solid #999;
-    border-radius:3px;
+    width:58px;
+    height:26px;
+    border:1.5px solid #888;
+    border-radius:5px;
     background:#fff;
+  }
+  .order-card .price-equation .op{
+    font-size:16px;
+    font-weight:700;
+    color:#777;
   }
   .count-pill{
     font-size:12px;
@@ -929,7 +935,13 @@ if(isAdmin){
           ${o.phone2 ? `<div class="row"><b>رقم هاتف آخر:</b> ${escapeHtml(o.phone2)}</div>` : ''}
           ${o.comment ? `<div class="row comment-row"><b>ملاحظة:</b> ${escapeHtml(o.comment)}</div>` : ''}
           <span class="gov-badge">${govLabel}</span>
-          <span class="price-box"><span>السعر</span><span class="price-rect"></span></span>
+          <div class="price-equation">
+            <span>السعر</span><span class="price-rect"></span>
+            <span class="op">+</span>
+            <span>الشحن</span><span class="price-rect"></span>
+            <span class="op">=</span>
+            <span>الاجمالي</span><span class="price-rect"></span>
+          </div>
           <span class="timestamp">${formatDate(o.createdAt)}</span>
         `;
         sheet.appendChild(card);
