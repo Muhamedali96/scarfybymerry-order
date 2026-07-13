@@ -452,7 +452,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, serverTimestamp, writeBatch
+  getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, serverTimestamp, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
@@ -472,6 +472,21 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const ordersCol = collection(db, "orders");
+
+// Atomically returns the next invoice number (5-digit, zero-padded).
+// Uses a persistent counter document so numbers NEVER repeat,
+// even if the order that used a number is later deleted permanently.
+async function getNextInvoiceNumber(){
+  const counterRef = doc(db, 'meta', 'invoiceCounter');
+  const nextValue = await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(counterRef);
+    const current = snap.exists() ? (snap.data().value || 0) : 0;
+    const next = current + 1;
+    transaction.set(counterRef, { value: next }, { merge: true });
+    return next;
+  });
+  return String(nextValue).padStart(5, '0');
+}
 
 const params = new URLSearchParams(window.location.search);
 const isAdmin = params.get('admin') === '1';
@@ -579,6 +594,7 @@ if(!isAdmin){
     };
 
     try{
+      order.invoiceNumber = await getNextInvoiceNumber();
       await addDoc(ordersCol, order);
       document.getElementById('formView').classList.add('hidden');
       document.getElementById('successView').classList.remove('hidden');
@@ -678,24 +694,17 @@ if(isAdmin){
     // Sort ascending by creation time to determine invoice order
     allOrders.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
 
-    // Backfill invoice numbers (5-digit, sequential) for any orders missing one
-    let maxInvoice = 0;
-    allOrders.forEach(o => {
-      if(o.invoiceNumber){
-        const n = parseInt(o.invoiceNumber, 10);
-        if(!isNaN(n) && n > maxInvoice) maxInvoice = n;
-      }
-    });
+    // Backfill invoice numbers for any legacy orders missing one.
+    // Uses the same persistent atomic counter as new orders, so numbers
+    // keep climbing forward and never get reused, even after deletions.
     const missingInvoice = allOrders.filter(o => !o.invoiceNumber);
     if(missingInvoice.length > 0){
       try{
-        const batch = writeBatch(db);
-        missingInvoice.forEach(o => {
-          maxInvoice += 1;
-          o.invoiceNumber = String(maxInvoice).padStart(5, '0');
-          batch.update(doc(db, 'orders', o._id), { invoiceNumber: o.invoiceNumber });
-        });
-        await batch.commit();
+        for(const o of missingInvoice){
+          const num = await getNextInvoiceNumber();
+          o.invoiceNumber = num;
+          await updateDoc(doc(db, 'orders', o._id), { invoiceNumber: num });
+        }
       }catch(e){ console.error('Failed to assign invoice numbers', e); }
     }
 
@@ -776,7 +785,7 @@ if(isAdmin){
             <button class="star-btn no-print${o.starred ? ' starred' : ''}" data-id="${o._id}" title="Star">${o.starred ? '★' : '☆'}</button>
             ${escapeHtml(o.name)}
           </div>
-		  <div class="row">${escapeHtml(o.instagram)}</div>
+		  <div class="name">${escapeHtml(o.instagram)}</div>
           <div class="row"><b>العنوان:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>رقم الهاتف:</b> ${escapeHtml(o.phone)}</div>
           ${o.phone2 ? `<div class="row"><b>رقم هاتف آخر:</b> ${escapeHtml(o.phone2)}</div>` : ''}
