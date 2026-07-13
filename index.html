@@ -907,7 +907,7 @@ if(isAdmin){
     document.getElementById('countPill').textContent = orders.length + (isHistory ? ' archived orders' : ' orders');
 
     container.innerHTML = '';
-    const perPage = 8;
+    const perPage = 4;
     for(let i=0; i<orders.length; i+=perPage){
       const sheet = document.createElement('div');
       sheet.className = 'sheet';
