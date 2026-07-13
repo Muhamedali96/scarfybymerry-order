@@ -623,7 +623,7 @@ async function getNextInvoiceNumber(){
     transaction.set(counterRef, { value: next }, { merge: true });
     return next;
   });
-  return String(nextValue).padStart(5, '0');
+  return 'S' + String(nextValue).padStart(5, '0');
 }
 
 const params = new URLSearchParams(window.location.search);
@@ -845,7 +845,7 @@ if(isAdmin){
     let maxExisting = 0;
     allOrders.forEach(o => {
       if(o.invoiceNumber){
-        const n = parseInt(o.invoiceNumber, 10);
+        const n = parseInt(o.invoiceNumber.replace(/^\D+/, ''), 10);
         if(!isNaN(n) && n > maxExisting) maxExisting = n;
       }
     });
@@ -886,6 +886,19 @@ if(isAdmin){
           await updateDoc(doc(db, 'orders', o._id), { invoiceNumber: num });
         }
       }catch(e){ console.error('Failed to assign invoice numbers', e); }
+    }
+
+    // 3) One-time migration: add the "S" prefix to any legacy invoice
+    //    numbers that don't have it yet (keeps the same digits/order).
+    const needsPrefix = allOrders.filter(o => o.invoiceNumber && !o.invoiceNumber.startsWith('S'));
+    if(needsPrefix.length > 0){
+      try{
+        for(const o of needsPrefix){
+          const newNum = 'S' + o.invoiceNumber.replace(/^\D+/, '');
+          o.invoiceNumber = newNum;
+          await updateDoc(doc(db, 'orders', o._id), { invoiceNumber: newNum });
+        }
+      }catch(e){ console.error('Failed to add S prefix to invoice numbers', e); }
     }
 
     renderOrders();
