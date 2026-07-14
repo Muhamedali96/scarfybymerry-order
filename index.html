@@ -130,6 +130,55 @@
   }
   .success-screen h2{margin:10px 0 6px;}
   .success-screen p{color:var(--muted); font-size:14px;}
+  .order-number-box{
+    margin-top:26px;
+    background:#fdf1f6;
+    border:1.5px solid var(--brand);
+    border-radius:12px;
+    padding:18px 20px;
+    text-align:center;
+  }
+  .onb-label{
+    font-size:13px;
+    font-weight:700;
+    color:#555;
+    margin:0 0 8px;
+  }
+  .onb-value-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .onb-value{
+    font-size:26px;
+    font-weight:800;
+    letter-spacing:1px;
+    color:var(--brand-dark);
+    direction:ltr;
+  }
+  .onb-copy-btn{
+    padding:7px 14px;
+    border-radius:8px;
+    border:1.5px solid var(--brand);
+    background:#fff;
+    color:var(--brand-dark);
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .onb-copy-btn.copied{
+    background:var(--good);
+    border-color:var(--good);
+    color:#fff;
+  }
+  .onb-instructions{
+    font-size:13.5px;
+    color:#444;
+    line-height:1.6;
+    margin:0;
+  }
   .admin-link{
     text-align:center;
     margin-top:18px;
@@ -493,6 +542,19 @@
     <div class="check">✓</div>
     <h2>تم إرسال طلبك بنجاح</h2>
     <p>Your order has been submitted successfully. Thank you!</p>
+
+    <div class="order-number-box">
+      <p class="onb-label">رقم طلبك <span class="en">/ Your Order Number</span></p>
+      <div class="onb-value-row">
+        <span id="successOrderNumber" class="onb-value">S00000</span>
+        <button id="copyOrderNumberBtn" class="onb-copy-btn" title="Copy">نسخ / Copy</button>
+      </div>
+      <p class="onb-instructions">
+        من فضلك انسخ رقم الطلب ده وابعتيه في الشات بتاعنا على الانستجرام عشان نأكد طلبك
+        <br>
+        <span class="en">Please copy this order number and send it to us on Instagram DM to confirm your order</span>
+      </p>
+    </div>
   </div>
 </div>
 
@@ -735,6 +797,7 @@ if(!isAdmin){
     try{
       order.invoiceNumber = await getNextInvoiceNumber();
       await addDoc(ordersCol, order);
+      document.getElementById('successOrderNumber').textContent = order.invoiceNumber;
       document.getElementById('formView').classList.add('hidden');
       document.getElementById('successView').classList.remove('hidden');
     }catch(e){
@@ -743,6 +806,27 @@ if(!isAdmin){
       alert('حدث خطأ، حاول مرة أخرى / Something went wrong, please try again.');
       console.error(e);
     }
+  });
+
+  document.getElementById('copyOrderNumberBtn').addEventListener('click', async () => {
+    const numberText = document.getElementById('successOrderNumber').textContent;
+    const copyBtn = document.getElementById('copyOrderNumberBtn');
+    try{
+      await navigator.clipboard.writeText(numberText);
+    }catch(e){
+      const tempInput = document.createElement('input');
+      tempInput.value = numberText;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+    }
+    copyBtn.textContent = '✓ تم النسخ / Copied';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.textContent = 'نسخ / Copy';
+      copyBtn.classList.remove('copied');
+    }, 2000);
   });
 }
 
