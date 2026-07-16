@@ -1434,9 +1434,8 @@ if(isAdmin){
   });
 
   document.getElementById('refreshBtn').addEventListener('click', loadOrders);
-  document.getElementById('printBtn').addEventListener('click', () => window.print());
 
-  document.getElementById('printSummaryBtn').addEventListener('click', () => {
+  document.getElementById('printBtn').addEventListener('click', () => {
     const { orders } = getFilteredSortedOrders();
     const rows = orders.map((o, idx) => `
       <tr>
@@ -1465,13 +1464,17 @@ if(isAdmin){
     `;
 
     document.getElementById('summaryPrintArea').innerHTML = tableHtml;
-    document.body.classList.add('printing-summary');
-    window.print();
+
+    // iOS Safari sometimes opens the print dialog before it finishes
+    // repainting newly-added content. Waiting two animation frames
+    // guarantees the summary table is fully rendered first.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+      });
+    });
   });
 
-  window.addEventListener('afterprint', () => {
-    document.body.classList.remove('printing-summary');
-  });
   document.getElementById('clearBtn').addEventListener('click', async () => {
     const isHistory = currentFilter === 'history';
 
