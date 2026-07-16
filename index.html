@@ -423,6 +423,37 @@
     outline:none;
     border-color:var(--brand);
   }
+  .date-filter-bar{
+    display:flex;
+    align-items:flex-end;
+    gap:16px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+    padding:12px 14px;
+    background:#fafafa;
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+  .date-filter-group{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .date-filter-group label{
+    font-size:12px;
+    font-weight:700;
+    color:#555;
+  }
+  .date-filter-group input{
+    padding:7px 10px;
+    border:1px solid var(--line);
+    border-radius:7px;
+    font-size:13px;
+    font-family:inherit;
+  }
+  .date-filter-bar .btn{
+    height:34px;
+  }
   .modal-overlay{
     position:fixed;
     inset:0;
@@ -470,7 +501,7 @@
   .modal-actions button{flex:1;}
   @media print{
     body{background:#fff;}
-    .admin-header, .filter-tabs, .search-bar, .no-print{display:none !important;}
+    .admin-header, .filter-tabs, .search-bar, .date-filter-bar, .no-print{display:none !important;}
     .admin-wrap{padding:0; max-width:100%;}
     .sheet{
       page-break-after:always;
@@ -597,6 +628,20 @@
     <input type="text" id="searchInput" placeholder="ابحث بالاسم... / Search by name...">
     <input type="text" id="searchInstagramInput" placeholder="ابحث باليوزر... / Search by Instagram username...">
     <input type="text" id="searchPhoneInput" placeholder="ابحث برقم الهاتف... / Search by phone number...">
+    <input type="text" id="searchOrderNumberInput" placeholder="ابحث برقم الفاتورة... / Search by order number...">
+  </div>
+  <div class="date-filter-bar no-print">
+    <div class="date-filter-group">
+      <label>من <span class="en">/ From</span></label>
+      <input type="date" id="dateFromInput">
+      <input type="time" id="timeFromInput">
+    </div>
+    <div class="date-filter-group">
+      <label>إلى <span class="en">/ To</span></label>
+      <input type="date" id="dateToInput">
+      <input type="time" id="timeToInput">
+    </div>
+    <button class="btn" id="clearDateFilterBtn">مسح التاريخ / Clear Dates</button>
   </div>
   <div id="ordersContainer"></div>
   <div id="emptyState" class="empty-state hidden">
@@ -871,6 +916,7 @@ if(isAdmin){
   let currentSearch = '';
   let currentSearchInstagram = '';
   let currentSearchPhone = '';
+  let currentSearchOrderNumber = '';
 
   document.getElementById('searchInput').addEventListener('input', (e) => {
     currentSearch = e.target.value.trim();
@@ -886,6 +932,42 @@ if(isAdmin){
     currentSearchPhone = e.target.value.trim();
     renderOrders();
   });
+
+  document.getElementById('searchOrderNumberInput').addEventListener('input', (e) => {
+    currentSearchOrderNumber = e.target.value.trim();
+    renderOrders();
+  });
+
+  // Date/time range filter (time is optional — defaults to start/end of day)
+  const dateFromInput = document.getElementById('dateFromInput');
+  const timeFromInput = document.getElementById('timeFromInput');
+  const dateToInput = document.getElementById('dateToInput');
+  const timeToInput = document.getElementById('timeToInput');
+
+  [dateFromInput, timeFromInput, dateToInput, timeToInput].forEach(el => {
+    el.addEventListener('input', renderOrders);
+  });
+
+  document.getElementById('clearDateFilterBtn').addEventListener('click', () => {
+    dateFromInput.value = '';
+    timeFromInput.value = '';
+    dateToInput.value = '';
+    timeToInput.value = '';
+    renderOrders();
+  });
+
+  function getDateRangeBounds(){
+    let fromMs = null, toMs = null;
+    if(dateFromInput.value){
+      const t = timeFromInput.value || '00:00';
+      fromMs = new Date(`${dateFromInput.value}T${t}:00`).getTime();
+    }
+    if(dateToInput.value){
+      const t = timeToInput.value || '23:59';
+      toMs = new Date(`${dateToInput.value}T${t}:59`).getTime();
+    }
+    return { fromMs, toMs };
+  }
 
   document.querySelectorAll('#filterTabs .tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1026,6 +1108,17 @@ if(isAdmin){
         const p2 = (o.phone2 || '').replace(/[\s-]/g, '');
         return p1.startsWith(qp) || p2.startsWith(qp);
       });
+    }
+    if(currentSearchOrderNumber){
+      const qo = currentSearchOrderNumber.toUpperCase().replace(/\s/g, '');
+      orders = orders.filter(o => (o.invoiceNumber || '').toUpperCase().includes(qo));
+    }
+    const { fromMs, toMs } = getDateRangeBounds();
+    if(fromMs !== null){
+      orders = orders.filter(o => (o.createdAt || 0) >= fromMs);
+    }
+    if(toMs !== null){
+      orders = orders.filter(o => (o.createdAt || 0) <= toMs);
     }
 
     // Starred orders float to the top; otherwise keep creation order
