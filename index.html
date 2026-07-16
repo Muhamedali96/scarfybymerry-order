@@ -454,6 +454,9 @@
   .date-filter-bar .btn{
     height:34px;
   }
+  .sort-toggle-row{
+    margin-bottom:18px;
+  }
   .modal-overlay{
     position:fixed;
     inset:0;
@@ -653,6 +656,9 @@
     <button class="tab" data-filter="Cairo/Giza">القاهرة / الجيزة</button>
     <button class="tab" data-filter="Other Government">محافظة أخرى</button>
     <button class="tab history-tab" data-filter="history">🗂 السجل / History</button>
+  </div>
+  <div class="sort-toggle-row no-print">
+    <button class="btn" id="sortToggleBtn">↓ الأحدث أولاً / Newest First</button>
   </div>
   <div class="search-bar no-print">
     <input type="text" id="searchInput" placeholder="ابحث بالاسم... / Search by name...">
@@ -957,6 +963,15 @@ if(isAdmin){
   let currentSearchInstagram = '';
   let currentSearchPhone = '';
   let currentSearchOrderNumber = '';
+  let sortNewestFirst = true;
+
+  document.getElementById('sortToggleBtn').addEventListener('click', () => {
+    sortNewestFirst = !sortNewestFirst;
+    document.getElementById('sortToggleBtn').textContent = sortNewestFirst
+      ? '↓ الأحدث أولاً / Newest First'
+      : '↑ الأقدم أولاً / Oldest First';
+    renderOrders();
+  });
 
   document.getElementById('searchInput').addEventListener('input', (e) => {
     currentSearch = e.target.value.trim();
@@ -1196,12 +1211,15 @@ if(isAdmin){
       });
     }
 
-    // Starred orders float to the top; otherwise keep creation order
+    // Starred orders float to the top; otherwise sort by date
+    // (direction controlled by the sortNewestFirst toggle)
     orders = orders.slice().sort((a,b) => {
       const aStar = a.starred ? 1 : 0;
       const bStar = b.starred ? 1 : 0;
       if(aStar !== bStar) return bStar - aStar;
-      return (a.createdAt||0) - (b.createdAt||0);
+      return sortNewestFirst
+        ? (b.createdAt||0) - (a.createdAt||0)
+        : (a.createdAt||0) - (b.createdAt||0);
     });
 
     return { orders, isHistory };
