@@ -509,8 +509,7 @@
       grid-auto-rows:1fr;
     }
     .order-card{border:1.5px dashed #999;}
-    body.printing-summary #ordersContainer{display:none !important;}
-    body:not(.printing-summary) .summary-print-area{display:none !important;}
+    .summary-print-area{display:block !important; page-break-before:always;}
   }
   .summary-print-area{display:none;}
   .summary-print-area h2{
@@ -645,7 +644,6 @@
     <div class="admin-actions no-print">
       <button class="btn" id="refreshBtn">↻ Refresh</button>
       <button class="btn primary" id="printBtn">🖨 Print</button>
-      <button class="btn" id="printSummaryBtn">🖨 طباعة الملخص / Print Summary</button>
       <button class="btn danger" id="clearBtn">Clear (Move to History)</button>
       <button class="btn" id="logoutBtn">Log Out</button>
     </div>
