@@ -641,7 +641,16 @@
       <input type="date" id="dateToInput">
       <input type="time" id="timeToInput">
     </div>
+    <div class="date-filter-group">
+      <label>رقم الفاتورة من <span class="en">/ Order # From</span></label>
+      <input type="text" id="orderNumFromInput" placeholder="00001" inputmode="numeric">
+    </div>
+    <div class="date-filter-group">
+      <label>إلى <span class="en">/ To</span></label>
+      <input type="text" id="orderNumToInput" placeholder="00050" inputmode="numeric">
+    </div>
     <button class="btn" id="clearDateFilterBtn">مسح التاريخ / Clear Dates</button>
+    <button class="btn" id="clearOrderNumFilterBtn">مسح الأرقام / Clear Numbers</button>
   </div>
   <div id="ordersContainer"></div>
   <div id="emptyState" class="empty-state hidden">
@@ -969,6 +978,33 @@ if(isAdmin){
     return { fromMs, toMs };
   }
 
+  // Order number range filter (e.g. from 00010 to 00050)
+  const orderNumFromInput = document.getElementById('orderNumFromInput');
+  const orderNumToInput = document.getElementById('orderNumToInput');
+
+  [orderNumFromInput, orderNumToInput].forEach(el => {
+    el.addEventListener('input', renderOrders);
+  });
+
+  document.getElementById('clearOrderNumFilterBtn').addEventListener('click', () => {
+    orderNumFromInput.value = '';
+    orderNumToInput.value = '';
+    renderOrders();
+  });
+
+  function getOrderNumRangeBounds(){
+    let fromNum = null, toNum = null;
+    if(orderNumFromInput.value.trim()){
+      const n = parseInt(orderNumFromInput.value.replace(/\D/g, ''), 10);
+      if(!isNaN(n)) fromNum = n;
+    }
+    if(orderNumToInput.value.trim()){
+      const n = parseInt(orderNumToInput.value.replace(/\D/g, ''), 10);
+      if(!isNaN(n)) toNum = n;
+    }
+    return { fromNum, toNum };
+  }
+
   document.querySelectorAll('#filterTabs .tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('#filterTabs .tab').forEach(t => t.classList.remove('active'));
@@ -1119,6 +1155,16 @@ if(isAdmin){
     }
     if(toMs !== null){
       orders = orders.filter(o => (o.createdAt || 0) <= toMs);
+    }
+    const { fromNum, toNum } = getOrderNumRangeBounds();
+    if(fromNum !== null || toNum !== null){
+      orders = orders.filter(o => {
+        const n = parseInt((o.invoiceNumber || '').replace(/\D/g, ''), 10);
+        if(isNaN(n)) return false;
+        if(fromNum !== null && n < fromNum) return false;
+        if(toNum !== null && n > toNum) return false;
+        return true;
+      });
     }
 
     // Starred orders float to the top; otherwise keep creation order
