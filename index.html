@@ -1275,8 +1275,8 @@ if(isAdmin){
 		  <div class="instagram-line">${escapeHtml(o.instagram)}</div>
           <div class="row"><b>العنوان:</b> ${escapeHtml(o.address)}</div>
           <div class="row"><b>رقم الهاتف:</b> ${escapeHtml(o.phone)}</div>
-          ${o.phone2 ? `<div class="row"><b>رقم هاتف آخر:</b> ${escapeHtml(o.phone2)}</div>` : ''}
-          ${o.comment ? `<div class="row comment-row"><b>ملاحظة:</b> ${escapeHtml(o.comment)}</div>` : ''}
+          <div class="row"><b>رقم هاتف آخر:</b> ${escapeHtml(o.phone2)}</div>
+          <div class="row comment-row"><b>ملاحظة:</b> ${escapeHtml(o.comment)}</div>
           <span class="gov-badge">${govLabel}</span>
           <div class="price-equation">
             <span>السعر</span><span class="price-rect"></span>
