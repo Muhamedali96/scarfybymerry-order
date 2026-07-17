@@ -368,6 +368,13 @@
     font-weight:700;
     color:#777;
   }
+  .order-card .promo-line{
+    text-align:center;
+    font-size:10.5px;
+    color:#888;
+    margin-top:10px;
+    line-height:1.5;
+  }
   .count-pill{
     font-size:12px;
     color:var(--muted);
@@ -1278,6 +1285,7 @@ if(isAdmin){
             <span class="op">=</span>
             <span>الاجمالي</span><span class="price-rect"></span>
           </div>
+          <div class="promo-line">✨ متفوتيش العرض! 🤍 اشتري 2 سكارف وخدي التالت هدية 🎁✨باقل من ٥٠٠ جنيه🔥</div>
           <span class="timestamp">${formatDate(o.createdAt)}</span>
         `;
         sheet.appendChild(card);
