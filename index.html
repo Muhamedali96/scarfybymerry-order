@@ -654,6 +654,7 @@
     <div class="admin-actions no-print">
       <button class="btn" id="refreshBtn">↻ Refresh</button>
       <button class="btn primary" id="printBtn">🖨 Print</button>
+      <button class="btn" id="exportCsvBtn">📥 تصدير CSV / Export CSV</button>
       <button class="btn danger" id="clearBtn">Clear (Move to History)</button>
       <button class="btn" id="logoutBtn">Log Out</button>
     </div>
@@ -1499,6 +1500,47 @@ if(isAdmin){
         window.print();
       });
     });
+  });
+
+  document.getElementById('exportCsvBtn').addEventListener('click', () => {
+    const { orders } = getFilteredSortedOrders();
+
+    function csvEscape(value){
+      const str = String(value == null ? '' : value);
+      if(/[",\n]/.test(str)){
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    }
+
+    const headers = [
+      'Invoice Number', 'Name', 'Instagram', 'Address',
+      'Phone', 'Phone 2', 'Government', 'Comment', 'Date'
+    ];
+
+    const rows = orders.map(o => [
+      o.invoiceNumber || '',
+      o.name || '',
+      o.instagram || '',
+      o.address || '',
+      o.phone || '',
+      o.phone2 || '',
+      o.government || '',
+      o.comment || '',
+      formatDate(o.createdAt)
+    ].map(csvEscape).join(','));
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `scarfy_orders_${dateStamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   });
 
   document.getElementById('clearBtn').addEventListener('click', async () => {
