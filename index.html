@@ -673,6 +673,7 @@
     <input type="text" id="searchInstagramInput" placeholder="ابحث باليوزر... / Search by Instagram username...">
     <input type="text" id="searchPhoneInput" placeholder="ابحث برقم الهاتف... / Search by phone number...">
     <input type="text" id="searchOrderNumberInput" placeholder="ابحث برقم الفاتورة... / Search by order number...">
+    <input type="text" id="searchAddressInput" placeholder="ابحث بكلمة في العنوان... / Search word in address...">
   </div>
   <div class="date-filter-bar no-print">
     <div class="date-filter-group">
@@ -971,6 +972,7 @@ if(isAdmin){
   let currentSearchInstagram = '';
   let currentSearchPhone = '';
   let currentSearchOrderNumber = '';
+  let currentSearchAddress = '';
   let sortNewestFirst = true;
 
   document.getElementById('sortToggleBtn').addEventListener('click', () => {
@@ -998,6 +1000,11 @@ if(isAdmin){
 
   document.getElementById('searchOrderNumberInput').addEventListener('input', (e) => {
     currentSearchOrderNumber = e.target.value.trim();
+    renderOrders();
+  });
+
+  document.getElementById('searchAddressInput').addEventListener('input', (e) => {
+    currentSearchAddress = e.target.value.trim();
     renderOrders();
   });
 
@@ -1200,6 +1207,10 @@ if(isAdmin){
     if(currentSearchOrderNumber){
       const qo = currentSearchOrderNumber.toUpperCase().replace(/\s/g, '');
       orders = orders.filter(o => (o.invoiceNumber || '').toUpperCase().includes(qo));
+    }
+    if(currentSearchAddress){
+      const qa = currentSearchAddress.trim();
+      orders = orders.filter(o => (o.address || '').includes(qa));
     }
     const { fromMs, toMs } = getDateRangeBounds();
     if(fromMs !== null){
