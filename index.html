@@ -520,22 +520,8 @@
     }
     .order-card{border:1.5px dashed #999;}
     .summary-print-area{display:block !important; page-break-before:always;}
-    .summary-page{
-      page-break-after:always;
-      width:100vw;
-      height:100vh;
-      overflow:hidden;
-      position:relative;
-    }
-    .summary-rotate-wrap{
-      position:absolute;
-      top:0;
-      left:0;
-      width:100vh;
-      height:100vw;
-      transform:rotate(90deg) translateY(-100%);
-      transform-origin:top left;
-    }
+    .summary-page{page-break-after:always;}
+    body.printing-summary-only #ordersContainer{display:none !important;}
   }
   .summary-print-area{display:none;}
   .summary-page h2{
@@ -1557,7 +1543,7 @@ if(isAdmin){
 
   document.getElementById('repairInvoiceBtn').addEventListener('click', runInvoiceNumberRepair);
 
-  document.getElementById('printBtn').addEventListener('click', () => {
+  function buildSummaryHtml(){
     const { orders } = getFilteredSortedOrders();
     const rowsPerPage = 30;
     let summaryPagesHtml = '';
@@ -1576,26 +1562,28 @@ if(isAdmin){
 
       summaryPagesHtml += `
         <div class="summary-page">
-          <div class="summary-rotate-wrap">
-            <h2>سكارفي - ملخص الطلبات <span class="en">/ Orders Summary</span></h2>
-            <table class="summary-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>رقم الفاتورة <span class="en">/ Order #</span></th>
-                  <th>الاسم <span class="en">/ Name</span></th>
-                  <th>يوزر الانستجرام <span class="en">/ Instagram</span></th>
-                  <th>السعر <span class="en">/ Price</span></th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>
+          <h2>سكارفي - ملخص الطلبات <span class="en">/ Orders Summary</span></h2>
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>رقم الفاتورة <span class="en">/ Order #</span></th>
+                <th>الاسم <span class="en">/ Name</span></th>
+                <th>يوزر الانستجرام <span class="en">/ Instagram</span></th>
+                <th>السعر <span class="en">/ Price</span></th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
         </div>
       `;
     }
 
-    document.getElementById('summaryPrintArea').innerHTML = summaryPagesHtml;
+    return summaryPagesHtml;
+  }
+
+  document.getElementById('printBtn').addEventListener('click', () => {
+    document.getElementById('summaryPrintArea').innerHTML = buildSummaryHtml();
 
     // iOS Safari sometimes opens the print dialog before it finishes
     // repainting newly-added content. Waiting two animation frames
@@ -1605,6 +1593,21 @@ if(isAdmin){
         window.print();
       });
     });
+  });
+
+  document.getElementById('printSummaryOnlyBtn').addEventListener('click', () => {
+    document.getElementById('summaryPrintArea').innerHTML = buildSummaryHtml();
+    document.body.classList.add('printing-summary-only');
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+      });
+    });
+  });
+
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('printing-summary-only');
   });
 
   document.getElementById('exportCsvBtn').addEventListener('click', () => {
