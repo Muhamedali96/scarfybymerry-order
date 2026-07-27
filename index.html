@@ -653,6 +653,7 @@
     </div>
     <div class="admin-actions no-print">
       <button class="btn" id="refreshBtn">↻ Refresh</button>
+      <button class="btn" id="repairInvoiceBtn">🔧 فحص أرقام الفواتير / Fix Invoice Numbers</button>
       <button class="btn primary" id="printBtn">🖨 Print</button>
       <button class="btn" id="exportCsvBtn">📥 تصدير CSV / Export CSV</button>
       <button class="btn danger" id="clearBtn">Clear (Move to History)</button>
@@ -749,7 +750,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, serverTimestamp, runTransaction
+  getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, where, orderBy, serverTimestamp, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
@@ -966,7 +967,13 @@ if(isAdmin){
 
   document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
 
-  let allOrders = [];
+  let activeOrders = [];
+  let historyOrders = [];
+  let historyLoaded = false;
+
+  function getAllLoadedOrders(){
+    return activeOrders.concat(historyOrders);
+  }
   let currentFilter = 'all';
   let currentSearch = '';
   let currentSearchInstagram = '';
@@ -1073,40 +1080,95 @@ if(isAdmin){
       currentFilter = tab.getAttribute('data-filter');
       const clearBtn = document.getElementById('clearBtn');
       clearBtn.textContent = currentFilter === 'history' ? 'Delete Permanently' : 'Clear (Move to History)';
-      renderOrders();
+      if(currentFilter === 'history' && !historyLoaded){
+        loadHistoryOrders();
+      }else{
+        renderOrders();
+      }
     });
   });
+
+  let historyLoaded = false;
 
   async function loadOrders(){
     const container = document.getElementById('ordersContainer');
     const emptyState = document.getElementById('emptyState');
     container.innerHTML = '<p class="no-print" style="text-align:center;color:#6b7280;">Loading...</p>';
 
-    let snapshot;
     try{
-      const q = query(ordersCol, orderBy('createdAt', 'asc'));
-      snapshot = await getDocs(q);
+      // Only fetch active (non-archived) orders by default — this is the
+      // set most people need most of the time, and keeps reads low.
+      const q = query(ordersCol, where('archived', '==', false));
+      const snapshot = await getDocs(q);
+      const activeOrders = [];
+      snapshot.forEach(d => {
+        const data = d.data();
+        data._id = d.id;
+        activeOrders.push(data);
+      });
+      // Keep any already-loaded History orders in place; replace only the active portion
+      const historyPortion = allOrders.filter(o => o.archived === true);
+      allOrders = [...activeOrders, ...historyPortion];
+      allOrders.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
     }catch(e){
       container.innerHTML = '<p class="no-print" style="text-align:center;color:#c62828;">Failed to load orders. Check your internet connection.</p>';
       console.error(e);
       return;
     }
 
-    allOrders = [];
-    snapshot.forEach(d => {
-      const data = d.data();
-      data._id = d.id;
-      allOrders.push(data);
-    });
+    renderOrders();
+  }
 
-    // Sort ascending by creation time to determine invoice order
-    allOrders.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+  async function loadHistoryOrders(){
+    const container = document.getElementById('ordersContainer');
+    container.innerHTML = '<p class="no-print" style="text-align:center;color:#6b7280;">Loading...</p>';
+    try{
+      const q = query(ordersCol, where('archived', '==', true));
+      const snapshot = await getDocs(q);
+      const historyOrders = [];
+      snapshot.forEach(d => {
+        const data = d.data();
+        data._id = d.id;
+        historyOrders.push(data);
+      });
+      const activePortion = allOrders.filter(o => o.archived !== true);
+      allOrders = [...activePortion, ...historyOrders];
+      allOrders.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+      historyLoaded = true;
+    }catch(e){
+      container.innerHTML = '<p class="no-print" style="text-align:center;color:#c62828;">Failed to load history. Check your internet connection.</p>';
+      console.error(e);
+      return;
+    }
+    renderOrders();
+  }
 
-    // 1) Make sure the persistent counter is at least as high as the
-    //    largest invoice number that already exists, so new orders
-    //    never collide with legacy ones.
+  // One-time maintenance tool — checks the ENTIRE collection for duplicate
+  // or missing invoice numbers and syncs the persistent counter. This does
+  // a full-collection read, so it's manual/on-demand rather than automatic.
+  async function runInvoiceNumberRepair(){
+    const btn = document.getElementById('repairInvoiceBtn');
+    if(btn){ btn.disabled = true; btn.textContent = 'جارِ الفحص... / Checking...'; }
+
+    let fullSet;
+    try{
+      const snapshot = await getDocs(ordersCol);
+      fullSet = [];
+      snapshot.forEach(d => {
+        const data = d.data();
+        data._id = d.id;
+        fullSet.push(data);
+      });
+    }catch(e){
+      console.error('Repair fetch failed', e);
+      if(btn){ btn.disabled = false; btn.textContent = '🔧 فحص أرقام الفواتير / Fix Invoice Numbers'; }
+      return;
+    }
+
+    fullSet.sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+
     let maxExisting = 0;
-    allOrders.forEach(o => {
+    fullSet.forEach(o => {
       if(o.invoiceNumber){
         const n = parseInt(o.invoiceNumber.replace(/^\D+/, ''), 10);
         if(!isNaN(n) && n > maxExisting) maxExisting = n;
@@ -1125,13 +1187,9 @@ if(isAdmin){
       }catch(e){ console.error('Failed to sync invoice counter', e); }
     }
 
-    // 2) Find any duplicate invoice numbers (this can happen from the
-    //    earlier bug) and any orders missing a number entirely.
-    //    The EARLIEST order keeps its number; later duplicates and any
-    //    orders with no number get a fresh, guaranteed-unique one.
     const seen = new Set();
     const needsNewNumber = [];
-    allOrders.forEach(o => {
+    fullSet.forEach(o => {
       if(!o.invoiceNumber){
         needsNewNumber.push(o);
       }else if(seen.has(o.invoiceNumber)){
@@ -1140,7 +1198,6 @@ if(isAdmin){
         seen.add(o.invoiceNumber);
       }
     });
-
     if(needsNewNumber.length > 0){
       try{
         for(const o of needsNewNumber){
@@ -1151,9 +1208,7 @@ if(isAdmin){
       }catch(e){ console.error('Failed to assign invoice numbers', e); }
     }
 
-    // 3) One-time migration: add the "S" prefix to any legacy invoice
-    //    numbers that don't have it yet (keeps the same digits/order).
-    const needsPrefix = allOrders.filter(o => o.invoiceNumber && !o.invoiceNumber.startsWith('S'));
+    const needsPrefix = fullSet.filter(o => o.invoiceNumber && !o.invoiceNumber.startsWith('S'));
     if(needsPrefix.length > 0){
       try{
         for(const o of needsPrefix){
@@ -1164,6 +1219,11 @@ if(isAdmin){
       }catch(e){ console.error('Failed to add S prefix to invoice numbers', e); }
     }
 
+    if(btn){ btn.disabled = false; btn.textContent = '✓ تم الفحص / Done'; }
+    setTimeout(() => { if(btn) btn.textContent = '🔧 فحص أرقام الفواتير / Fix Invoice Numbers'; }, 2500);
+
+    allOrders = fullSet;
+    historyLoaded = true;
     renderOrders();
   }
 
@@ -1335,7 +1395,9 @@ if(isAdmin){
           const id = e.target.getAttribute('data-id');
           try{
             await updateDoc(doc(db, 'orders', id), { archived: false });
-            loadOrders();
+            const orderObj = allOrders.find(o => o._id === id);
+            if(orderObj) orderObj.archived = false;
+            renderOrders();
           }catch(err){ console.error(err); }
         });
       });
@@ -1345,7 +1407,8 @@ if(isAdmin){
           if(confirm('Permanently delete this order? This cannot be undone.')){
             try{
               await deleteDoc(doc(db, 'orders', id));
-              loadOrders();
+              allOrders = allOrders.filter(o => o._id !== id);
+              renderOrders();
             }catch(err){ console.error(err); }
           }
         });
@@ -1357,7 +1420,9 @@ if(isAdmin){
           if(confirm('Move this order to history?')){
             try{
               await updateDoc(doc(db, 'orders', id), { archived: true });
-              loadOrders();
+              const orderObj = allOrders.find(o => o._id === id);
+              if(orderObj) orderObj.archived = true;
+              renderOrders();
             }catch(err){ console.error(err); }
           }
         });
@@ -1473,7 +1538,15 @@ if(isAdmin){
     saveBtn.textContent = 'حفظ / Save';
   });
 
-  document.getElementById('refreshBtn').addEventListener('click', loadOrders);
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    if(currentFilter === 'history'){
+      loadHistoryOrders();
+    }else{
+      loadOrders();
+    }
+  });
+
+  document.getElementById('repairInvoiceBtn').addEventListener('click', runInvoiceNumberRepair);
 
   document.getElementById('printBtn').addEventListener('click', () => {
     const { orders } = getFilteredSortedOrders();
@@ -1564,7 +1637,9 @@ if(isAdmin){
       try{
         const toDelete = allOrders.filter(o => o.archived === true);
         await Promise.all(toDelete.map(o => deleteDoc(doc(db, 'orders', o._id))));
-        loadOrders();
+        const deletedIds = new Set(toDelete.map(o => o._id));
+        allOrders = allOrders.filter(o => !deletedIds.has(o._id));
+        renderOrders();
       }catch(e){ console.error(e); }
       return;
     }
@@ -1576,11 +1651,12 @@ if(isAdmin){
         ? allOrders.filter(o => o.archived !== true)
         : allOrders.filter(o => o.archived !== true && o.government === currentFilter);
       await Promise.all(toArchive.map(o => updateDoc(doc(db, 'orders', o._id), { archived: true })));
-      loadOrders();
+      const archivedIds = new Set(toArchive.map(o => o._id));
+      allOrders.forEach(o => { if(archivedIds.has(o._id)) o.archived = true; });
+      renderOrders();
     }catch(e){ console.error(e); }
   });
 
-  loadOrders();
 }
 </script>
 
