@@ -967,13 +967,8 @@ if(isAdmin){
 
   document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
 
-  let activeOrders = [];
-  let historyOrders = [];
+  let allOrders = [];
   let historyLoaded = false;
-
-  function getAllLoadedOrders(){
-    return activeOrders.concat(historyOrders);
-  }
   let currentFilter = 'all';
   let currentSearch = '';
   let currentSearchInstagram = '';
@@ -1087,8 +1082,6 @@ if(isAdmin){
       }
     });
   });
-
-  let historyLoaded = false;
 
   async function loadOrders(){
     const container = document.getElementById('ordersContainer');
