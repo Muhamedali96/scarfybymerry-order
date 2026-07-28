@@ -657,6 +657,7 @@
       <button class="btn" id="refreshBtn">↻ Refresh</button>
       <button class="btn" id="repairInvoiceBtn">🔧 فحص أرقام الفواتير / Fix Invoice Numbers</button>
       <button class="btn primary" id="printBtn">🖨 Print</button>
+      <button class="btn" id="printSummaryOnlyBtn">🖨 طباعة الملخص فقط / Print Summary Only</button>
       <button class="btn" id="exportCsvBtn">📥 تصدير CSV / Export CSV</button>
       <button class="btn danger" id="clearBtn">Clear (Move to History)</button>
       <button class="btn" id="logoutBtn">Log Out</button>
@@ -1372,7 +1373,7 @@ if(isAdmin){
         renderOrders();
         try{
           await updateDoc(doc(db, 'orders', id), { starred: orderObj.starred });
-        }catch(err){ console.error(err); }
+        }catch(err){ console.error(err); alert('حدث خطأ: ' + (err && err.message ? err.message : err)); }
       });
     });
 
@@ -1393,7 +1394,7 @@ if(isAdmin){
             const orderObj = allOrders.find(o => o._id === id);
             if(orderObj) orderObj.archived = false;
             renderOrders();
-          }catch(err){ console.error(err); }
+          }catch(err){ console.error(err); alert('حدث خطأ: ' + (err && err.message ? err.message : err)); }
         });
       });
       container.querySelectorAll('.del:not(.restore-btn)').forEach(btn => {
@@ -1404,7 +1405,7 @@ if(isAdmin){
               await deleteDoc(doc(db, 'orders', id));
               allOrders = allOrders.filter(o => o._id !== id);
               renderOrders();
-            }catch(err){ console.error(err); }
+            }catch(err){ console.error(err); alert('حدث خطأ: ' + (err && err.message ? err.message : err)); }
           }
         });
       });
@@ -1418,7 +1419,7 @@ if(isAdmin){
               const orderObj = allOrders.find(o => o._id === id);
               if(orderObj) orderObj.archived = true;
               renderOrders();
-            }catch(err){ console.error(err); }
+            }catch(err){ console.error(err); alert('حدث خطأ: ' + (err && err.message ? err.message : err)); }
           }
         });
       });
@@ -1662,7 +1663,7 @@ if(isAdmin){
         const deletedIds = new Set(toDelete.map(o => o._id));
         allOrders = allOrders.filter(o => !deletedIds.has(o._id));
         renderOrders();
-      }catch(e){ console.error(e); }
+      }catch(e){ console.error(e); alert('حدث خطأ: ' + (e && e.message ? e.message : e)); }
       return;
     }
 
@@ -1676,7 +1677,7 @@ if(isAdmin){
       const archivedIds = new Set(toArchive.map(o => o._id));
       allOrders.forEach(o => { if(archivedIds.has(o._id)) o.archived = true; });
       renderOrders();
-    }catch(e){ console.error(e); }
+    }catch(e){ console.error(e); alert('حدث خطأ: ' + (e && e.message ? e.message : e)); }
   });
 
 }
