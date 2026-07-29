@@ -83,6 +83,9 @@
     gap:10px;
     margin-top:8px;
   }
+  .source-options .gov-opt{
+    min-width:100px;
+  }
   .gov-opt{
     flex:1;
     border:1.5px solid var(--line);
@@ -330,11 +333,16 @@
   .gov-badge{
     display:inline-block;
     margin-top:6px;
+    margin-inline-end:6px;
     font-size:11.5px;
     padding:2px 8px;
     border-radius:20px;
     background:#f1f2f4;
     color:#444;
+  }
+  .gov-badge.source-badge{
+    background:#e8f0fe;
+    color:#1a4fa0;
   }
   .order-card .timestamp{
     display:block;
@@ -602,6 +610,23 @@
     </div>
     <div class="error" id="err_gov">من فضلك اختر المحافظة / Please select a government</div>
 
+    <label>الطلب جاء من <span class="en">/ Order Placed Via</span></label>
+    <div class="gov-options source-options">
+      <label class="gov-opt" id="source_facebook">
+        <input type="radio" name="source" value="Facebook">
+        فيسبوك<br><span class="en">Facebook</span>
+      </label>
+      <label class="gov-opt" id="source_instagram">
+        <input type="radio" name="source" value="Instagram">
+        انستجرام<br><span class="en">Instagram</span>
+      </label>
+      <label class="gov-opt" id="source_instagram_backup">
+        <input type="radio" name="source" value="Backup Instagram">
+        انستجرام احتياطي<br><span class="en">Backup Instagram</span>
+      </label>
+    </div>
+    <div class="error" id="err_source">من فضلك اختر مصدر الطلب / Please select where the order came from</div>
+
     <label>أي تعليق أو ملاحظة <span class="en">/ Any Comments or Notes</span> <span class="en">(optional)</span></label>
     <textarea id="f_comment" placeholder="اكتب هنا أي تفاصيل إضافية عن طلبك..."></textarea>
     <div class="error lang-warn" id="warn_comment">من فضلك اكتب باللغة العربية فقط / Please write in Arabic only</div>
@@ -740,6 +765,22 @@
       </label>
     </div>
 
+    <label>الطلب جاء من <span class="en">/ Order Placed Via</span></label>
+    <div class="gov-options source-options">
+      <label class="gov-opt" id="edit_source_facebook">
+        <input type="radio" name="edit_source" value="Facebook">
+        فيسبوك<br><span class="en">Facebook</span>
+      </label>
+      <label class="gov-opt" id="edit_source_instagram">
+        <input type="radio" name="edit_source" value="Instagram">
+        انستجرام<br><span class="en">Instagram</span>
+      </label>
+      <label class="gov-opt" id="edit_source_instagram_backup">
+        <input type="radio" name="edit_source" value="Backup Instagram">
+        انستجرام احتياطي<br><span class="en">Backup Instagram</span>
+      </label>
+    </div>
+
     <label>أي تعليق أو ملاحظة <span class="en">/ Any Comments or Notes</span></label>
     <textarea id="edit_comment"></textarea>
 
@@ -864,6 +905,22 @@ if(!isAdmin){
     document.getElementById('err_gov').style.display = 'none';
   });
 
+  let selectedSource = null;
+  const sourceOpts = {
+    'Facebook': document.getElementById('source_facebook'),
+    'Instagram': document.getElementById('source_instagram'),
+    'Backup Instagram': document.getElementById('source_instagram_backup')
+  };
+  Object.entries(sourceOpts).forEach(([value, el]) => {
+    el.addEventListener('click', () => {
+      selectedSource = value;
+      Object.values(sourceOpts).forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      el.querySelector('input').checked = true;
+      document.getElementById('err_source').style.display = 'none';
+    });
+  });
+
   document.getElementById('submitBtn').addEventListener('click', async () => {
     const name = document.getElementById('f_name').value.trim();
     const address = document.getElementById('f_address').value.trim();
@@ -881,7 +938,8 @@ if(!isAdmin){
     document.getElementById('err_phone2').style.display = phone2Ok ? 'none' : 'block';
     document.getElementById('err_instagram').style.display = instagram ? 'none' : 'block';
     document.getElementById('err_gov').style.display = selectedGov ? 'none' : 'block';
-    if(!name || !address || !phoneOk || !phone2Ok || !instagram || !selectedGov) valid = false;
+    document.getElementById('err_source').style.display = selectedSource ? 'none' : 'block';
+    if(!name || !address || !phoneOk || !phone2Ok || !instagram || !selectedGov || !selectedSource) valid = false;
 
     if(!valid) return;
 
@@ -892,6 +950,7 @@ if(!isAdmin){
     const order = {
       name, address, phone, phone2, instagram, comment,
       government: selectedGov,
+      source: selectedSource,
       archived: false,
       starred: false,
       timestamp: serverTimestamp(),
@@ -1327,6 +1386,8 @@ if(isAdmin){
       const chunk = orders.slice(i, i+perPage);
       chunk.forEach((o, idx) => {
         const govLabel = o.government === 'Cairo/Giza' ? 'القاهرة / الجيزة' : 'محافظة أخرى';
+        const sourceLabels = { 'Facebook': 'فيسبوك', 'Instagram': 'انستجرام', 'Backup Instagram': 'انستجرام احتياطي' };
+        const sourceLabel = sourceLabels[o.source] || '';
         const card = document.createElement('div');
         card.className = 'order-card' + (o.starred ? ' is-starred' : '');
         const actionButtons = isHistory
@@ -1348,6 +1409,7 @@ if(isAdmin){
           <div class="row"><b>رقم هاتف آخر:</b> ${escapeHtml(o.phone2)}</div>
           <div class="row comment-row"><b>ملاحظة:</b> ${escapeHtml(o.comment)}</div>
           <span class="gov-badge">${govLabel}</span>
+          ${sourceLabel ? `<span class="gov-badge source-badge">${sourceLabel}</span>` : ''}
           <div class="price-equation">
             <span>السعر</span><span class="price-rect"></span>
             <span class="op">+</span>
@@ -1452,6 +1514,21 @@ if(isAdmin){
     editGovOther.querySelector('input').checked = true;
   });
 
+  let editSelectedSource = null;
+  const editSourceOpts = {
+    'Facebook': document.getElementById('edit_source_facebook'),
+    'Instagram': document.getElementById('edit_source_instagram'),
+    'Backup Instagram': document.getElementById('edit_source_instagram_backup')
+  };
+  Object.entries(editSourceOpts).forEach(([value, el]) => {
+    el.addEventListener('click', () => {
+      editSelectedSource = value;
+      Object.values(editSourceOpts).forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      el.querySelector('input').checked = true;
+    });
+  });
+
   // Apply the same Arabic-only / English-only typing restrictions as the customer form
   ['edit_name', 'edit_address', 'edit_comment'].forEach(id => {
     const el = document.getElementById(id);
@@ -1491,6 +1568,12 @@ if(isAdmin){
     editGovCG.querySelector('input').checked = editSelectedGov === 'Cairo/Giza';
     editGovOther.querySelector('input').checked = editSelectedGov === 'Other Government';
 
+    editSelectedSource = o.source || null;
+    Object.entries(editSourceOpts).forEach(([value, el]) => {
+      el.classList.toggle('selected', editSelectedSource === value);
+      el.querySelector('input').checked = editSelectedSource === value;
+    });
+
     editOverlay.classList.remove('hidden');
   }
 
@@ -1517,7 +1600,8 @@ if(isAdmin){
       phone: document.getElementById('edit_phone').value.trim(),
       phone2: document.getElementById('edit_phone2').value.trim(),
       comment: document.getElementById('edit_comment').value.trim(),
-      government: editSelectedGov
+      government: editSelectedGov,
+      source: editSelectedSource
     };
 
     try{
@@ -1624,7 +1708,7 @@ if(isAdmin){
 
     const headers = [
       'Invoice Number', 'Name', 'Instagram', 'Address',
-      'Phone', 'Phone 2', 'Government', 'Comment', 'Date'
+      'Phone', 'Phone 2', 'Government', 'Source', 'Comment', 'Date'
     ];
 
     const rows = orders.map(o => [
@@ -1635,6 +1719,7 @@ if(isAdmin){
       o.phone || '',
       o.phone2 || '',
       o.government || '',
+      o.source || '',
       o.comment || '',
       formatDate(o.createdAt)
     ].map(csvEscape).join(','));
